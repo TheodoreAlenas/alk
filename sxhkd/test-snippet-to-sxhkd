@@ -115,7 +115,7 @@ super + F
 EOF
 }
 print_reality() {
-  AL_SNIPPETS="$tmp" sxhkd/alc-snippet-to-sxhkd only-print
+  AL_SNIPPETS="$tmp" sxhkd/alc-snippet-to-sxhkd
 }
 test_end_to_end() {
   print_source > "$tmp/source.sh"

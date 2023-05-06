@@ -1,0 +1,72 @@
+#!/bin/env sh
+
+fn_desktop_bindings() {
+  bspc query -D --names | awk '{print NR; print $0}' | {
+    while read -r wmsn_num; read -r wmsn_name
+    do
+      cat <<EOF
+fn=wm_d$wmsn_num+key+is-$wmsn_num:"\$fn"
+fn_wm_d$wmsn_num() {
+  case "\$act" in
+    script) printf "bspc desktop $wmsn_name --focus\\n" ;;
+    descr) printf "go to desktop '$wmsn_name' ($wmsn_num)\\n" ;;
+    color) printf "sed '%s'\n" 's/$wmsn_name/\nattention\n$wmsn_name\nnormal\n/' ;;
+  esac
+}
+fn=wm_s$wmsn_num+key+is-shift-$wmsn_num:"\$fn"
+fn_wm_s$wmsn_num() {
+  case "\$act" in
+    script) printf "bspc node @brother --to-desktop $wmsn_name\\n" ;;
+    descr) printf "move brother window to desktop '$wmsn_name' ($wmsn_num)\\n" ;;
+    color) printf "sed '%s'\n" 's/$wmsn_name/\nattention\n$wmsn_name\nnormal\n/' ;;
+  esac
+}
+fn=wm_b$wmsn_num+key+is-control-$wmsn_num:"\$fn"
+fn_wm_b$wmsn_num() {
+  case "\$act" in
+    script) printf "bspc node @$wmsn_name:/ --to-desktop focused\\n" ;;
+    descr) printf "bring windows from desktop '$wmsn_name' ($wmsn_num)\\n" ;;
+    color) printf "sed '%s'\n" 's/$wmsn_name/\nattention\n$wmsn_name\nnormal\n/' ;;
+  esac
+}
+fn=wm_t$wmsn_num+key+is-alt-$wmsn_num:"\$fn"
+fn_wm_t$wmsn_num() {
+  case "\$act" in
+    script) printf "bspc node --to-desktop $wmsn_name --follow\\n" ;;
+    descr) printf "travel with the window to the desktop '$wmsn_name' ($wmsn_num)\\n" ;;
+    color) printf "sed '%s'\n" 's/$wmsn_name/\nattention\n$wmsn_name\nnormal\n/' ;;
+  esac
+}
+EOF
+done
+}
+}
+
+fn_volume_bindings() {
+  for sokb_num in $(seq 0 9)
+  do
+    cat <<EOF
+fn=vol$sokb_num+key+is-m-$sokb_num:"\$fn"
+fn_vol$sokb_num() {
+  test "\$act" = script && printf "pacmd set-sink-volume 0 $((sokb_num * 6000))\n"
+}
+EOF
+done
+}
+
+case "$1" in
+  desktop-bindings)
+    fn_desktop_bindings
+    ;;
+  volume-bindings)
+    fn_volume_bindings
+    ;;
+  '')
+    fn_desktop_bindings
+    fn_volume_bindings
+    ;;
+  *)
+    echo Invalid argument, desktop-bindings, volume-bindings, or nothing. >&2
+    exit 1
+    ;;
+esac

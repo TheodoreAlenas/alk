@@ -318,7 +318,7 @@ posix_from_alias_chops() {
   do
     act=descr "fn_$rnwsc_alias_id" | sed 's/^/# /'
     printf "alias %s='" "$rnwsc_alias"
-    act=script "fn_$rnwsc_alias_id" | sed "s/'/'\"'\"'/g"
+    printf %s "$(act=script "fn_$rnwsc_alias_id")" | sed "s/'/'\"'\"'/g"
     printf "'\n\n"
   done
 }

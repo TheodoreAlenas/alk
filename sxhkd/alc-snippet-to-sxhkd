@@ -33,9 +33,9 @@ run() {
   help_generator_start_here="$1"
   case "$help_generator_start_here" in
     --help) help ;;
-    only-print) print_sxhkdrc ;;  # only output to stdout
+    '') print_sxhkdrc ;;  # only output to stdout
     update-sxhkd) update_sxhkd ;;  # configure and restart sxhkd
-    '') replace_sxhkdrc ;;
+    replace-sxhkdrc) replace_sxhkdrc ;;
     *) help >&2 ; exit 1 ;;
   esac
 }
