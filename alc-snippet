@@ -1,0 +1,45 @@
+#!/bin/env sh
+
+get_command_from_user() {
+  raw_choice="$(alm-snippet preview "$1" | alc-talk recommend)"
+  test "$raw_choice" || return 1
+  printf "%s" "$raw_choice" | alm-snippet unpreview
+}
+
+
+assemble_and_execute() {
+  alc-snippet-assemble assemble "$@" || exit
+  alc-talk say-bar "${0##*/} (script assembled)" < "$3"
+  alc-store-and-eval < "$2"
+}
+
+gui_run() {
+  choice="$1" key="$2"
+  mkdir -p /tmp/al
+  assembled="$(mktemp /tmp/al/completion-of-"$choice"-XXXXX)"
+  colored="$(mktemp /tmp/al/colored-completion-of-"$choice"-XXXXX)"
+  (assemble_and_execute "$choice" "$assembled" "$colored" "$key")
+  rm "$assembled" "$colored"
+}
+
+use_gui() {
+  choice="$(get_command_from_user "$1")" || exit
+  gui_run "$choice" "$1"
+}
+
+help() {
+  echo "A wrapper for alm-snippet."
+  alc-generate-help "$0" help_generator_start_here
+}
+
+run() {
+  help_generator_start_here="$1"
+  case "$help_generator_start_here" in
+    --help) help ;;
+    gui) use_gui "${2:-key}" ;;  # TAG   A picker will show up. Can specify tag.
+    gui-run) gui_run "$2" "${3:-key}" ;;  # COMMAND TAG   Specify command to run
+    *) help >&2 ; exit 1 ;;
+  esac
+}
+
+run "$@"

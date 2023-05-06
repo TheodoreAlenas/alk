@@ -1,0 +1,139 @@
+#!/bin/env sh
+
+program=./alm-snippet
+
+die() {
+  printf "\033[0;31m[%s] %s\033[0m\n" "$(basename "$0")" "$1" >&2
+  exit 1
+}
+
+isolate_protocol_lines() {
+  awk "
+  /auto-check-end/ {on=0}
+  on == 1 {print \$0}
+  /auto-check-chop-key-bindings$1/ {on=1}
+  "
+}
+clean_it() {
+  read -r cleaning_script
+  sh -c "${cleaning_script##*# }"
+}
+squeeze_protocol_users() {
+  isolate_protocol_lines -1 < "$(which "$program")" | clean_it | cat -n
+  isolate_protocol_lines -2 < "$(which "$program")" | clean_it | cat -n
+  isolate_protocol_lines < sxhkd/expand-scripts.awk | clean_it | cat -n
+}
+
+test_protocol_matches() {
+  misses="$(squeeze_protocol_users | sort | uniq -u)"
+
+  if [ "$misses" ]
+  then die "protocol mismatch on '$misses'"
+  fi
+}
+
+print_source() {
+  cat <<EOF
+# shellcheck disable=SC2154
+# shellcheck disable=SC2016
+
+fn=r_las+key+is-F+dont-bake:"\$fn"
+fn_r_las() {
+  case "\$act" in
+    script) tail -1 ~/.cache/al/history.sh ;;
+  esac
+}
+
+fn=open+key+is-o+silent:"\$fn"
+fn_open() {
+  case "\$act" in
+    script) printf "alc-snippet gui\n" ;;
+  esac
+}
+
+fn=xprt+key+is-e-e:"\$fn"
+fn_xprt() {
+  case "\$act" in
+    script) printf "export\n" ;;
+  esac
+}
+
+fn=hist+key+interactive:"\$fn"
+fn_hist() {
+  case "\$act" in
+    script) printf "nvim ~/.cache/al/history.sh\n" ;;
+  esac
+}
+
+fn=tmpbr+key+is-e-b+key-term:"\$fn"
+fn_tmpbr() {
+  case "\$act" in
+    script) printf "cd /tmp; broot\n" ;;
+  esac
+}
+
+fn=wm_t7+key+is-alt-7:"\$fn"
+fn_wm_t7() {
+  case "\$act" in
+    script) printf "bspc node --to-desktop temporary --follow\n" ;;
+    descr) printf "travel with the window to the desktop 'temporary' (7)\n" ;;
+  esac
+}
+fn=wm_ru+key+is-w-r:"\$fn"
+fn_wm_ru() {
+  test "\$act" = script && printf "bspc rule -l\n"
+}
+fn=nons+key+is-w-n:"\$fn"
+fn_nons() {
+  test "\$act" = script && printf "'{'}'\\\n"
+}
+EOF
+}
+print_expectation() {
+  cat <<EOF
+super + w; super + n
+  alm-snippet colored-wrapped nons key | alc-talk say-bar "sxhkd (w n)" & alc-store-and-eval ''"'"'\{'"'"'\}'"'"''
+
+super + w; super + r
+  alm-snippet colored-wrapped wm_ru key | alc-talk say-bar "sxhkd (w r)" & alc-store-and-eval 'bspc rule -l'
+
+super + alt + 7
+  alm-snippet colored-wrapped wm_t7 key | alc-talk say-bar "sxhkd (alt 7)" & alc-store-and-eval 'bspc node --to-desktop temporary --follow'
+
+super + e; super + b
+  alm-snippet colored-wrapped tmpbr key | alc-talk say-bar "sxhkd (e b)" & alc-store-and-eval 'alc-terminal --float -e sh -c '"'"'cd /tmp; broot'"'"''
+
+super + e; super + e
+  alm-snippet colored-wrapped xprt key | alc-talk say-bar "sxhkd (e e)" & alc-store-and-eval 'export'
+
+super + o
+  alc-snippet gui
+
+super + F
+  alc-snippet gui-run r_las key
+
+EOF
+}
+print_reality() {
+  AL_SNIPPETS="$tmp" sxhkd/alc-snippet-to-sxhkd only-print
+}
+test_end_to_end() {
+  print_source > "$tmp/source.sh"
+  print_expectation > "$tmp/expectation"
+  print_reality > "$tmp/reality"
+  # print_reality > /tmp/real
+  diff "$tmp/expectation" "$tmp/reality" || exit 1
+}
+
+run() {
+  test_protocol_matches
+  test_end_to_end
+}
+
+tmp="$(mktemp -d /tmp/al/test-snippet-to-sxhkd-e2e-XXXXXX)"
+if (run)
+then r=0; printf "%s Test '%s' done, successful.\n" '+' "${0##*/}"
+else r=1; printf "%s Test '%s' done, failed.\n" '-' "${0##*/}"
+fi
+rm -rf "$tmp"
+exit "$r"

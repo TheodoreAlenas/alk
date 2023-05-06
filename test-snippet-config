@@ -1,0 +1,34 @@
+#!/bin/env sh
+
+program=./alm-snippet
+
+die() {
+  if [ "$INTERACTIVE" = no ]
+  then printf "[%s] %s\n" "${0##*/}" "$1" >&2
+  else printf "\033[0;31m[%s] %s\033[0m\n" "${0##*/}" "$1" >&2
+  fi
+  exit 1
+}
+
+run() {
+
+  if "$program" there-are-duplicates
+  then die "there are duplicates, $("$program" print-duplicates)"
+  fi
+
+  if "$program" there-are-newline-lackers
+  then die "there are newline lackers I guess: $("$program" lacking-newline)"
+  fi
+}
+
+dir_for_all=/tmp/testing-snippets-pid-is-$$
+mkdir "$dir_for_all"
+
+if (run)
+then r=0; printf "%s Test '%s' done, successful.\n" '+' "${0##*/}"
+else r=1; printf "%s Test '%s' done, failed.\n" '-' "${0##*/}"
+fi
+
+rm -rf "$dir_for_all"
+exit "$r"
+

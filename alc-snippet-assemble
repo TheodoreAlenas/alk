@@ -1,0 +1,112 @@
+#!/bin/env sh
+
+# shellcheck disable=SC2016
+awk_more_args='
+NR > 1 {print $0}  # theres an inevitable newline character there
+
+END {
+printf("_asmbc_ARG%d_asmbc_\n", NR);
+for (i = NR + 1; i < 10; i++)
+  printf("ARG%d\n", i);
+}'
+
+# shellcheck disable=SC2016
+awk_mark='{
+split($0, a, "_asmbc_");
+printf("%s", a[1]);
+l=length(a)
+for (i=2; i <= l; i++)
+  printf("\nselection\n%s", a[i]);
+printf("\n");
+}'
+
+to_tell_the_bar() {
+  tltb_script_name="$1" tltb_args_as_lines="$2" tltb_is_key="$3"
+  printf "%s\n" "$tltb_args_as_lines" \
+    | awk "$awk_more_args" \
+    | xargs -d'\n' alm-snippet colored-wrapped "$tltb_script_name" "$tltb_is_key" \
+    | awk "$awk_mark"
+}
+
+tell_the_bar() {
+  to_tell_the_bar "$1" "$2" "$3" | alc-talk say-bar "$4"
+}
+
+append_to_the_bar() {
+  read -r attb_type
+  case "$attb_type" in
+    manip) printf "(%s) " "$attb_type"; read -r _; tr '\n' ';' ;;
+    preview) printf "(fzf --preview) "; read -r _; tr '\n' ';' ;;
+    command | get-image-piped) printf "(%s) " "$attb_type"; tr '\n' ';' ; printf "\n" ;;
+    ls | get-image-in) printf "(%s) " "$attb_type"; tr '\n' ' ' ; printf "\n" ;;
+    *) printf "%s (%s)" "${0##*/}" "$attb_type" ;;
+  esac
+}
+
+gather_arg() {
+  read -r gtrg_type
+  case "$gtrg_type" in
+    ls) xargs ls | alc-talk recommend '' ;;
+    recommend) cat | alc-talk recommend '' ;;
+    demand) cat | alc-talk demand '' ;;
+    get-image-in) alc-talk get-image-in '' ;;
+    get-image-piped) sh | alc-talk get-image '' ;;
+    get-image) alc-talk get-image '' ;;
+    get-line) alc-talk get-line '' ;;
+    command) sh | alc-talk recommend '' ;;
+    manip)
+      read -r gtrg_manipulation
+      sh | alc-talk recommend "$gtrg_type" | sh -c "$gtrg_manipulation"
+      ;;
+    preview)
+      read -r gtrg_previewer
+      { printf "%s\n" "$gtrg_previewer"; sh; } | alc-talk preview ''
+      ;;
+    *) printf "Invalid / unimplemented: '%s'\n" "$gtrg_type" | alc-talk say-error "Error" ;;
+  esac
+}
+
+assemble() {
+  asmbc_script_name="$1" asmbc_dump_here="$2" asmbc_dump_colors="$3" asmbc_is_key="$4"
+
+  asmbc_args_as_lines=''
+
+  arg_i=1
+  while [ "$arg_i" -lt 10 ]  # safety measure
+  do
+    arg_recipe="$(alm-snippet print "$asmbc_script_name" "arg$arg_i")"
+    test "$arg_recipe" || break
+
+    asmbc_bar_message="$(printf "%s\n" "$arg_recipe" | append_to_the_bar)"
+    tell_the_bar "$asmbc_script_name" "$asmbc_args_as_lines" "$asmbc_is_key" "$asmbc_bar_message"
+
+    user_input="$(printf "%s\n" "$arg_recipe" | gather_arg)"
+    test "$user_input" || {
+      tell_the_bar "$asmbc_script_name" "$asmbc_args_as_lines" "$asmbc_is_key" "${0##*/} (aborted)"
+      exit 1
+    }
+
+    asmbc_args_as_lines="$(printf "%s\n%s" "$asmbc_args_as_lines" "$user_input")"
+    arg_i=$((arg_i + 1))
+  done
+
+  printf "%s\n" "$asmbc_args_as_lines" \
+    | awk 'NR > 1 {print $0}' \
+    | xargs -d'\n' alm-snippet print-wrapped "$asmbc_script_name" "$asmbc_is_key" \
+    > "$asmbc_dump_here"
+
+  printf "%s\n" "$asmbc_args_as_lines" \
+    | awk 'NR > 1 {print $0}' \
+    | xargs -d'\n' alm-snippet colored-wrapped "$asmbc_script_name" "$asmbc_is_key" \
+    > "$asmbc_dump_colors"
+}
+
+first_arg="$1"
+shift
+case "$first_arg" in
+  --help) alc-generate-help "$0" "first_arg" ; grep -A 2 '() {' "$0" ;;
+  assemble) assemble "$@" ;;
+  to-tell) to_tell_the_bar "$@" ;;  # for debugging
+  tell) tell_the_bar "$@" ;;  # for debugging
+  gather) gather_arg ;;  # for debugging
+esac

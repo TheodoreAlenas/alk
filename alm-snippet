@@ -1,0 +1,428 @@
+#!/bin/env sh
+
+alm_snip_conf_dir="${AL_SNIPPETS:-"$HOME/.config/alsnip"}"
+
+help() {
+  cat <<EOM
+Looks for config files in \$AL_SNIPPETS OR ~/.config/alsnip
+(now it's $alm_snip_conf_dir)
+
+$(alc-generate-help "$0" 1)
+
+TAG:
+$(printf "%s" "$fn" | tr : '\n' | cut -d+ -f2- | tr + '\n' | sed '/^is-/d' | sort | uniq | column)
+EOM
+}
+
+fn=''
+
+fn_SOURCE() {  # There's an interesting reason behind this function.
+  :            # Can you tell what? It has to do with the fn variable.
+}
+
+source_all() {
+  for funcs_file in "${alm_snip_conf_dir}"/*.sh
+  do
+    . "$funcs_file"
+    srcl_basename="${funcs_file##*/}"
+    fn="SOURCE+is-${srcl_basename%.sh}:$fn"
+  done
+}
+
+assert_fn_exists() {
+  asfnex_type="$(type "$1")"
+  if [ "${asfnex_type#*function}" ]
+  then
+    echo "invalid function '$1', try '--list'" >&2
+    exit 1
+  fi
+}
+
+escape_quotes() {
+  printf %s "$1" | sed "s/'/'\"'\"'/g"
+}
+
+print_wrapped() {
+
+  cmd="$1"
+  key="$2"
+  act=script
+  shift 2
+
+  assert_fn_exists "fn_$cmd"
+
+  cut_start="${fn#*:"$cmd"+}"
+  attributes="+${cut_start%%:*}"
+  cut_before="${attributes#*"+$key-"}"
+  key_type="${cut_before%%+*}"
+  case "$key,$key_type" in
+    (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
+    (key,term) printf "alc-terminal --float -e sh -c '%s'\n" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
+    (key,term-k) printf "alc-terminal --float -k '%s'\n" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
+    (key,) "fn_$cmd" "$@" ;;
+
+    (copy,stdout) printf "{ %s; } | %s\n" "$("fn_$cmd" "$@")" "xclip -in -selection clipboard" ;;
+    (copy,)
+      printf "%s '%s'" "printf %s" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")"
+      printf " | %s\n" "xclip -in -selection clipboard"
+      ;;
+  esac
+
+}
+
+colored_wrapped() {
+
+  cmd="$1"
+  key="$2"
+  shift 2
+
+  painter="$(act=color "fn_$cmd")"
+  act=script
+  if [ "$painter" ]
+  then painted="$("fn_$cmd" "$@" | awk 'NR > 1 {print "newline"} {print $0}' | sh -c "$painter")"
+  else painted="$("fn_$cmd" "$@" | awk 'NR > 1 {print "newline"} {print $0}')"
+  fi
+
+  assert_fn_exists "fn_$cmd"
+
+  case "$key,$(printf %s "$fn" | sed "s/.*\b$cmd\b[^:]*+$key-\([a-zA-Z0-9-]*\).*/\1/")" in
+    (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
+    (key,term) printf "\npale\nalc-terminal --float -e sh -c '\nnormal\n%s\npale\n\n'" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
+    (key,term-k) printf "\npale\nalc-terminal --float -k '\nnormal\n%s\npale\n\n'" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
+    (key,"$fn") printf "%s\n" "$painted" ;;
+
+    (copy,stdout) printf "\npale\n{ \nnormal\n%s\npale\n; } | %s\n" "$painted" "xclip -in -selection clipboard" ;;
+    (copy,"$fn")
+      printf "\npale\n%s '\nnormal\n%s\npale\n'" "printf %s" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")"
+      printf " | %s\n" "xclip -in -selection clipboard"
+      ;;
+  esac
+
+}
+
+gather_data() {
+
+  cmd="$1" act="$2"
+  shift 2
+  case "$act" in
+    script | descr | arg* ) ;;
+    *) echo "Invalid action: $act" >&2 ;;
+  esac
+
+  assert_fn_exists "fn_$cmd"
+  "fn_$cmd" "$@"
+}
+
+awk_command_for_listing() {
+  lwbd_for_keys="! /^SOURCE\+is-/ && /+$1+|+$1\$/"
+  lwbd_for_source='/^SOURCE\+is-/'
+  shift
+
+  # shellcheck disable=2016
+  lwbd_change_source='
+  s = $0;
+  sub(/^.*\+is-/, "/", s);
+  '
+
+  # shellcheck disable=2016
+  lwbd_keys='
+  k = $0;
+  gsub(/-control-/, "-^-", k);
+  gsub(/-alt-/, "-!-", k);
+  gsub(/-shift-/, "-#-", k);
+  sub(/^[^+]*/, "", k);
+  sub(/^(.*+)*key\+is-/, ".", k);
+  sub(/\+.*/, "", k);
+  sub(/#/, "+", k);
+  gsub(/-/, "", k);
+  '
+
+  # shellcheck disable=2016
+  lwbd_typical_preview='
+  if(match($0, "+special-preview"))  # deprecated
+    tp = "special-preview";
+  else
+    tp = "typical-preview";
+  '
+
+  # shellcheck disable=2016
+  lwbd_func='
+  f = $0;
+  sub(/+.*/, "", f);
+  '
+
+  lwbd_awk=''
+  for lwbd_arg
+  do
+    case "$lwbd_arg" in
+      func) lwbd_awk="$lwbd_awk $lwbd_func print f;" ;;
+      typical_preview) lwbd_awk="$lwbd_awk $lwbd_typical_preview print tp;" ;;
+      formatted_func) lwbd_awk="$lwbd_awk $lwbd_func "'printf("%-5s |\n", f)' ;;
+      keys) lwbd_awk="$lwbd_awk $lwbd_keys print k;" ;;
+      func_and_keys)
+        lwbd_awk="$lwbd_awk $lwbd_func $lwbd_keys"
+        lwbd_awk="$lwbd_awk "'printf("%-5s %-4s|\n", f, k);'
+        ;;
+      func_keys_souce)
+        lwbd_awk="$lwbd_awk $lwbd_func $lwbd_keys"
+        lwbd_awk="$lwbd_awk "'printf("%-5s %-4s%-8s|\n", f, k, s);'
+        ;;
+    esac
+  done
+
+  printf "%s\n" 'BEGIN {RS = ":"} '"$lwbd_for_keys { $lwbd_awk } $lwbd_for_source { $lwbd_change_source }"
+}
+
+list_with_binding() {
+  printf "%s" "$fn" | awk "$(awk_command_for_listing "$@")"
+}
+
+append_scripts() {
+  while read -r apsc_func; read -r _apsc_typical_preview; read -r apsc_func_and_more
+  do
+    act=script
+    "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | {
+      while read -r apsc_line
+      do printf "%s %s\n" "$apsc_func_and_more" "$apsc_line"
+      done
+    }
+  done
+}
+
+append_script_heads() {
+  apsc_separator='"___________________________________________________"'
+  while
+    read -r apsc_func
+    read -r _apsc_typical_preview
+    read -r apsc_func_and_more
+  do
+    act=script
+    {
+      printf "%s\n" "$apsc_func_and_more"
+      if printf %s "$fn" | grep -q ":$apsc_func\b[^:]*\bpreview-stdout\b"
+      then
+        printf '> '
+        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
+        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | sh
+      else
+        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
+      fi
+    } | awk 'NR == 1 {h=$0; print $0} NR > 1 && NR < 10 {printf("%s   %s\n", h, $0)} END {printf("%s%s\n", h, '"$apsc_separator"')}'
+  done
+}
+
+preview() {
+  prvw_key="${1:-key}"
+  if [ "$prvw_key" = 'key' ]
+  then list_with_binding "$prvw_key" func typical_preview func_keys_souce | append_scripts
+  else list_with_binding "$prvw_key" func typical_preview formatted_func | append_script_heads
+  fi
+}
+unpreview() {
+  cut -d' ' -f1
+}
+
+snippet_info() {
+  sninf_fn="$(printf "%s" "$1" | cut -d' ' -f1)"
+
+  # shellcheck disable=SC2088
+  sninf_src="$(printf "%s" "$fn" | sed 's/:'"$sninf_fn"'[+:].*// ; s/.*SOURCE+is-// ; s/:.*//')"
+  sninf_file="$HOME/code/sys/snippets/$sninf_src.sh"
+  if [ -f "$sninf_file" ]
+  then printf "%s\n" "$sninf_file"
+  else printf "Source claims to be '%s' but that file doesn't exist" "$sninf_src"
+  fi
+
+  printf "\n"
+  act=descr "fn_$sninf_fn"
+
+  printf "\n"
+  act=script "fn_$sninf_fn" ARG1 ARG2 ARG3 ARG4 ARG5
+
+  printf "\n Tags:\n"
+  printf "%s" "$fn" | tr : '\n' | grep "^$sninf_fn+\|^$sninf_fn\$" | tr + '\n' | tail -n +2 | tr - ' ' | column
+
+  printf "\n Arguments:\n"
+  for i in 1 2 3 4 5 6 7 8
+  do
+    arg_info="$(act=arg"$i" "fn_$(printf "%s" "$sninf_fn")")"
+    if [ "$arg_info" ]
+    then printf "\n %s)\n%s\n\n" "$i" "$arg_info"
+    else break
+    fi
+  done
+  
+  printf "\n\n You may want to try:\n\n"
+  cat <<EOM
+alc-snippet gui-run $sninf_fn
+alm-snippet print $sninf_fn script
+alm-snippet print $sninf_fn descr
+alm-snippet print $sninf_fn arg1
+
+> alm-snippet --help
+> alc-snippet --help
+EOM
+}
+
+chop_aliases() {
+  printf "%s" "$fn" | awk '
+  BEGIN { RS = ":"; FS = "+"; }
+
+  func get_is_alias()
+  {
+    for (i = 1; i <= NF; i++) {
+      if ($i == "alias") {
+        return i + 1;
+      }
+    }
+    return 0;
+  }
+
+  func find_alias(def_position)
+  {
+    split($def_position, alias_parts, "-");
+
+    if (alias_parts[1] == "is") {
+      return substr($def_position, 4, length($def_position) - 3);
+    }
+    return $1;
+  }
+
+  func print_alias(alias)
+  {
+    alias_id = $1;
+
+    # auto-check-chop-aliases-1
+    # sed "s/^.*print //"
+    print alias
+    print alias_id
+    # auto-check-end
+  }
+
+  {
+    is_alias = def_position = get_is_alias();
+
+    if (is_alias)
+      print_alias(find_alias(def_position));
+  }'
+}
+
+posix_from_alias_chops() {
+  printf "# POSIX aliases autogenerated by %s\n\n" "${0##*/}, $(date)"
+  while
+    # auto-check-chop-aliases-2
+    # sed "s/.*rnwsc_//"
+    read -r rnwsc_alias
+    read -r rnwsc_alias_id
+    # auto-check-end
+  do
+    act=descr "fn_$rnwsc_alias_id" | sed 's/^/# /'
+    printf "alias %s='" "$rnwsc_alias"
+    act=script "fn_$rnwsc_alias_id" | sed "s/'/'\"'\"'/g"
+    printf "'\n\n"
+  done
+}
+
+chop_key_bindings() {
+  fn_name='\([^+]*\)'
+  binding='\([^+]*\)'
+  match="$fn_name.*+key+is-$binding.*"
+  subst='\1 \2 \0'
+  sed_cmd="s/$match/$subst/p"
+  printf "%s" "$fn" | tr : '\n' | sed -n "$sed_cmd" | awk '
+  {
+    snippet_id = $1;
+    keys = $2;
+
+    if (match($3, "+silent"))
+      silent = "silent";
+    else
+      silent = "nonsilent";
+
+    if (match($3, "+interactive"))
+      interactive = "interactive";
+    else if (match($3, "+dont-bake"))
+      interactive = "dontbake";
+    else
+      interactive = "noninteract";
+
+    # auto-check-chop-key-bindings-1
+    # sed "s/^.*print //"
+    print keys
+    print silent
+    print interactive
+    print you_or_me
+    print snippet_id
+    # auto-check-end
+  }' | tr - ' '
+}
+
+append_scripts_to_key_chops() {
+  while
+    # auto-check-chop-key-bindings-2
+    # sed "s/.*rnwsc_//"
+    read -r rnwsc_keys
+    read -r rnwsc_silent
+    read -r rnwsc_interactive
+    read -r _rnwsc_you_or_me
+    read -r rnwsc_snippet_id
+    # auto-check-end
+  do
+    printf "%s\n%s\n%s\n" "$rnwsc_keys" "$rnwsc_silent" "$rnwsc_interactive"
+
+    rnwsc_takes_args="$(act=arg1 "fn_$rnwsc_snippet_id")"
+
+    if [ "$rnwsc_takes_args" ] || [ "$rnwsc_interactive" = "dontbake" ]
+    then printf "call-me\n%s\n" "$rnwsc_snippet_id"
+    else
+      printf "run-yourself\n%s\n" "$rnwsc_snippet_id"
+      print_wrapped "$rnwsc_snippet_id" key
+      printf "rnwsc-end-of-script\n"
+    fi
+
+  done
+}
+
+print_duplicates() {
+  printf "%s" "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE | sort | uniq -D
+}
+lacking_newline() {
+  for f in $(list_with_binding '' func)
+  do
+    if [ "$(act=script "fn_$f" | tr -d -c '\n' | tr '\n' a)" = '' ]
+    then printf "%s\n" "$f"
+    fi
+  done
+}
+
+run() {
+  case "$1" in
+    --help | -h) help ;;                     #            Print this help
+    list | -l) list_with_binding "$2" func ;;   # [TAG]      Get a list of script names
+    preview | -p) preview "$2" ;;          # [TAG]      Preview all snippets with the tag
+    unpreview | -u) unpreview ;;           #            stdin preview, stdout original
+
+    info | -i) snippet_info "$2" ;;        # SCRIPT_NAME
+    self-or-stdout) self_or_stdout "$2" "$3" ;;  # TAG SCRIPT_NAME  consider as-is or pipe to sh
+
+    print | -e) shift; gather_data "$@" ;; # SCRIPT_NAME script | descr | arg1 | arg2 | arg3
+    print-wrapped) shift; print_wrapped "$@" ;; # SCRIPT_NAME TAG
+    colored-wrapped) shift; colored_wrapped "$@" ;; # SCRIPT_NAME TAG
+    chop-key-bindings) chop_key_bindings | append_scripts_to_key_chops ;;  # for hooking hotkey systems (try it)
+    aliases-as-posix) chop_aliases | posix_from_alias_chops ;;  # for hooking hotkey systems (try it)
+
+    print-duplicates) print_duplicates ;;  # outputs the duplicates to stdout
+    there-are-duplicates) [ "$(print_duplicates)" ] || exit 1 ;;  # exits with 1 if there are duplicates
+    lacking-newline) lacking_newline ;;  # prints scripts that lack newlines
+    there-are-newline-lackers) [ "$(lacking_newline)" ] || exit 1 ;;  # silent, exits with 1
+
+    expose-fn) printf "%s\n" "$fn" ;;      # for debugging. Unstable, don't code with it.
+    expose-awk) awk_command_for_listing "$@" ;;  # for debugging. Unstable, don't code with it.
+    expose-lwb) list_with_binding "$@" ;;  # for debugging. Unstable, don't code with it.
+
+    *) echo 'Sorry invalid flag, try --help' >&2 ; exit 1 ;;
+  esac
+}
+
+source_all
+run "$@"

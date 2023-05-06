@@ -1,0 +1,288 @@
+#!/bin/env sh
+
+program=./alm-snippet
+
+die() {
+  if [ "$INTERACTIVE" = no ]
+  then printf "[%s] %s\n" "${0##*/}" "$1" >&2
+  else printf "\033[0;31m[%s] %s\033[0m\n" "${0##*/}" "$1" >&2
+  fi
+  exit 1
+}
+
+get_and_expect() {
+  if [ "$1" = "$2" ]
+  then return
+  fi
+  if [ "$INTERACTIVE" = no ]
+  then printf "[%s]\nThe reality:%s\nExpectation:%s\n" "${0##*/}" "$1" "$2" >&2
+  else printf "\033[0;31m[%s]\nThe reality:%s\nExpectation:%s\033[0\n" "${0##*/}" "$1" "$2" >&2
+  fi
+  exit 1
+}
+
+setup_simple_script() {
+    cat <<EOSH
+fn=_a__a_+tagnameofa:"\$fn"
+fn__a__a_() {
+  case "\$act" in
+    script) echo the-script ;;
+  esac
+}
+EOSH
+}
+
+test_simple_script() {
+
+  if [ "$("$program" --help | grep "$AL_SNIPPETS")" = '' ]
+  then die "--help doesn't prove the export was considered"
+  fi
+
+  choice="$("$program" list tagnameofa | head -1)"
+  if ! [ "$("$program" print "$choice" script)" = 'the-script' ]
+  then die "single script can't be listed / printed"
+  fi
+
+  if ! [ "$("$program" list nosuchtag)" = '' ]
+  then die "listing non existent tag"
+  fi
+
+  if ! "$program" preview tagnameofa | grep -q the-script
+  then die "single script can't be previewed" 
+  fi
+
+  if ! [ "$("$program" preview nosuchtag)" = '' ]
+  then die "previewing non existent tag" 
+  fi
+
+  origin="$("$program" preview tagnameofa | head -1 | "$program" unpreview)"
+  if ! [ "$("$program" print "$origin" script)" = 'the-script' ]
+  then die "can't unpreview from preview"
+  fi
+
+  if "$program" there-are-duplicates
+  then die "claims there are duplicates, but there aren't"
+  fi
+}
+
+setup_duplicate_script() {
+    cat <<EOSH
+fn=same_name+b:"\$fn"
+fn_same_name() {
+  case "\$act" in
+    script) echo the-script ;;
+  esac
+}
+fn=same_name+k+interactive:"\$fn"
+fn_same_name() {
+  case "\$act" in
+    script) printf other-script ;;
+  esac
+}
+EOSH
+}
+
+test_duplicate_script() {
+  if ! "$program" there-are-duplicates || ! { "$program" print-duplicates | grep -q same_name; }
+  then die "doesn't say there are duplicates, or not right maybe"
+  fi
+  if ! "$program" there-are-newline-lackers
+  then die "actually there are newline lackers lol"
+  fi
+}
+
+setup_multiple_scripts() {
+    cat <<EOSH
+fn=a+k:"\$fn"
+fn_a() {
+  case "\$act" in
+    script) echo script-1 ;;
+  esac
+}
+fn=b+k:"\$fn"
+fn_b() {
+  case "\$act" in
+    script) echo script-2 ;;
+  esac
+}
+fn=A+k:"\$fn"
+fn_A() {
+  case "\$act" in
+    script) echo script-3 ;;
+  esac
+}
+fn=_a+k:"\$fn"
+fn__a() {
+  case "\$act" in
+    script) echo script-4 ;;
+  esac
+}
+fn=aa+k:"\$fn"
+fn_aa() {
+  case "\$act" in
+    script) echo script-5 ;;
+  esac
+}
+EOSH
+}
+
+test_multiple_scripts() {
+
+  check() {
+    picked="$("$program" preview k | grep "script-$1" | "$program" unpreview)"
+    final="$("$program" print "$picked" script)"
+    if ! [ "script-$1" = "$final" ]
+    then die "unpreviewing script-$1 gives '$final' coming from '$picked'."
+    fi
+  }
+
+  check 1; check 2; check 3; check 4; check 5;
+
+  if "$program" there-are-newline-lackers
+  then die "wait there aren't newline lackers there"
+  fi
+}
+
+setup_shouldnt_interfere() {
+    cat <<EOSH
+fn=shouldnt_interfere:"\$fn"
+fn_shouldnt_interfere() {
+  case "\$act" in
+    script) echo shouldnt-interefere ;;
+  esac
+}
+EOSH
+}
+
+setup_self_or_stdout() {
+    cat <<EOSH
+fn=implicit_me+key+copy-stdout:"\$fn"
+fn_implicit_me() {
+  case "\$act" in
+    script) echo echo implicit-me ;;
+    color) printf "%s\n" "sed 's/i/\\\\nattention\\\\ni\\\\nnormal\\\\n/'" ;;
+  esac
+}
+fn=me+key+copy:"\$fn"
+fn_me() {
+  case "\$act" in
+    script) printf "%s %s\n" script-me "'\$1'" ;;
+    color) printf "%s\n" "sed 's/me/\\\\nattention\\\\nme\\\\nnormal\\\\n/'" ;;
+  esac
+}
+fn=out+key-stdout+copy:"\$fn"
+fn_out() {
+  case "\$act" in
+    script) printf "echo 'script.me' \\"'\$1'\\" | tr . -\n" ;;
+  esac
+}
+fn=in_term+key-term+copy:"\$fn"
+fn_in_term() {
+  case "\$act" in
+    script) printf "echo 'in-term' \\"\\\$1\\" | tr . -\n" ;;
+  esac
+}
+EOSH
+}
+
+test_self_or_stdout() {
+
+  tsots_self="$("$program" print-wrapped "$("$program" preview key | grep -F script-me | "$program" unpreview)" key daddy)"
+  tsots_stdout="$("$program" print-wrapped "$("$program" preview key | grep -F script.me | "$program" unpreview)" key daddy)"
+  if ! [ "$tsots_stdout" = "$tsots_self" ] || ! [ "$tsots_stdout" = "script-me 'daddy'" ]
+  then die "said '$tsots_stdout' and '$tsots_self', instead of saying 'script-me daddy' both times"
+  fi
+
+  tsots_self="$("$program" print-wrapped "$("$program" preview key | grep -F implicit-me | "$program" unpreview)" key daddy)"
+  if ! [ "$tsots_self" = "echo implicit-me" ]
+  then die "doesn't default to wrapping as self, said '$tsots_self'"
+  fi
+
+  tsots_self="$("$program" print-wrapped "$("$program" preview copy | grep -F script-me | "$program" unpreview)" copy daddy)"
+  tsots_expected="printf %s 'script-me '\"'\"'daddy'\"'\"'' | xclip -in -selection clipboard"
+  get_and_expect "$tsots_self" "$tsots_expected"
+
+  tsots_stdout="$("$program" print-wrapped "$("$program" preview copy | grep -F implicit-me | "$program" unpreview)" copy daddy)"
+  tsots_expected="{ echo implicit-me; } | xclip -in -selection clipboard"
+  get_and_expect "$tsots_stdout" "$tsots_expected"
+
+  tsots_stdout="$("$program" print-wrapped "$("$program" preview key | grep -F in-term | "$program" unpreview)" key daddy)"
+  tsots_expected="alc-terminal --float -e sh -c 'echo '\"'\"'in-term'\"'\"' \"\$1\" | tr . -'"
+  get_and_expect "$tsots_stdout" "$tsots_expected"
+
+  tsots_stdout="$("$program" colored-wrapped "$("$program" preview key | grep -F script-me | "$program" unpreview)" key daddy)"
+  tsots_expected="script-
+attention
+me
+normal
+ 'daddy'"
+  get_and_expect "$tsots_stdout" "$tsots_expected"
+
+  tsots_stdout="$("$program" colored-wrapped "$("$program" preview copy | grep -F implicit-me | "$program" unpreview)" copy daddy)"
+  tsots_expected="
+pale
+{ 
+normal
+echo 
+attention
+i
+normal
+mplicit-me
+pale
+; } | xclip -in -selection clipboard"
+  get_and_expect "$tsots_stdout" "$tsots_expected"
+}
+
+run() {
+
+  error_messages="$({
+  {
+    # shellcheck disable=SC2031 disable=SC2030
+    export AL_SNIPPETS="$dir_for_all/simple_script"
+    mkdir "$AL_SNIPPETS"
+    setup_simple_script > "$AL_SNIPPETS/1.sh"
+    setup_shouldnt_interfere > "$AL_SNIPPETS/2.sh"
+    test_simple_script
+  } &
+  {
+    # shellcheck disable=SC2031 disable=SC2030
+    export AL_SNIPPETS="$dir_for_all/duplicate_script"
+    mkdir "$AL_SNIPPETS"
+    setup_duplicate_script > "$AL_SNIPPETS/1.sh"
+    setup_shouldnt_interfere > "$AL_SNIPPETS/2.sh"
+    test_duplicate_script
+  } &
+  {
+    # shellcheck disable=SC2031 disable=SC2030
+    export AL_SNIPPETS="$dir_for_all/multiple_scripts"
+    mkdir "$AL_SNIPPETS"
+    setup_multiple_scripts > "$AL_SNIPPETS/1.sh"
+    setup_shouldnt_interfere > "$AL_SNIPPETS/2.sh"
+    test_multiple_scripts
+  } &
+  {
+    # shellcheck disable=SC2031 disable=SC2030
+    export AL_SNIPPETS="$dir_for_all/self_or_stdout"
+    mkdir "$AL_SNIPPETS"
+    setup_self_or_stdout > "$AL_SNIPPETS/1.sh"
+    setup_shouldnt_interfere > "$AL_SNIPPETS/2.sh"
+    test_self_or_stdout
+  } &
+  wait; } 2>&1 )"
+
+  if [ "$error_messages" ]
+  then die "$error_messages"
+  fi
+}
+
+dir_for_all=/tmp/testing-snippets-pid-is-$$
+mkdir "$dir_for_all"
+
+if (run)
+then r=0; printf "%s Test '%s' done, successful.\n" '+' "${0##*/}"
+else r=1; printf "%s Test '%s' done, failed.\n" '-' "${0##*/}"
+fi
+
+rm -rf "$dir_for_all"
+exit "$r"
+

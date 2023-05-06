@@ -1,0 +1,45 @@
+#!/bin/env sh
+
+print_sxhkdrc() {
+  # TODO don't keep it like that
+  alm-snippet chop-key-bindings | awk -f sxhkd/expand-scripts.awk | awk -f sxhkd/expand-keys.awk
+}
+
+replace_sxhkdrc() {
+  mv ~/.config/sxhkd/sxhkdrc ~/.config/sxhkd/sxhkdrc.bk
+  print_sxhkdrc > ~/.config/sxhkd/sxhkdrc
+}
+
+update_sxhkd() {
+  replace_sxhkdrc
+  killall sxhkd; INTERACTIVE=no sxhkd &
+}
+
+help() {
+  alc-generate-help "$0" help_generator_start_here
+  cat <<EOM
+Generate sxhkdrc and perhaps restart sxhkd too.
+
+$(command -v \
+alm-snippet > /dev/null || echo "(missing?)")
+alm-snippet has a environment variable indicating where the
+input files are taken from, to generate sxhkdrc.
+EOM
+
+alm-snippet help
+}
+
+run() {
+  help_generator_start_here="$1"
+  case "$help_generator_start_here" in
+    --help) help ;;
+    only-print) print_sxhkdrc ;;  # only output to stdout
+    update-sxhkd) update_sxhkd ;;  # configure and restart sxhkd
+    '') replace_sxhkdrc ;;
+    *) help >&2 ; exit 1 ;;
+  esac
+}
+
+run "$@"
+
+
