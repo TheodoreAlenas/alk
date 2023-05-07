@@ -29,7 +29,7 @@ to_tell_the_bar() {
 }
 
 tell_the_bar() {
-  to_tell_the_bar "$1" "$2" "$3" | alc-talk say-bar "$4"
+  to_tell_the_bar "$1" "$2" "$3" | ~/.config/alsnip/user-io say-bar "$4"
 }
 
 append_to_the_bar() {

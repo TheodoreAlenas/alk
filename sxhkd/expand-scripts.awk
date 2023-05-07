@@ -21,7 +21,7 @@ NR == s + 4 {
   else if (r_silent != "silent") {
 
     printf("alm-snippet colored-wrapped %s key ", r_snippet_id);  # paint
-    printf("| alc-talk say-bar \"sxhkd (%s)\" & ", r_keys);
+    printf("| ~/.config/alsnip/user-io say-bar \"sxhkd (%s)\" & ", r_keys);
     printf("alc-store-and-eval ");
 
   }

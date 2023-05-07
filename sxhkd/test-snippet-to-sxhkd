@@ -92,19 +92,19 @@ EOF
 print_expectation() {
   cat <<EOF
 super + w; super + n
-  alm-snippet colored-wrapped nons key | alc-talk say-bar "sxhkd (w n)" & alc-store-and-eval ''"'"'\{'"'"'\}'"'"''
+  alm-snippet colored-wrapped nons key | ~/.config/alsnip/user-io say-bar "sxhkd (w n)" & alc-store-and-eval ''"'"'\{'"'"'\}'"'"''
 
 super + w; super + r
-  alm-snippet colored-wrapped wm_ru key | alc-talk say-bar "sxhkd (w r)" & alc-store-and-eval 'bspc rule -l'
+  alm-snippet colored-wrapped wm_ru key | ~/.config/alsnip/user-io say-bar "sxhkd (w r)" & alc-store-and-eval 'bspc rule -l'
 
 super + alt + 7
-  alm-snippet colored-wrapped wm_t7 key | alc-talk say-bar "sxhkd (alt 7)" & alc-store-and-eval 'bspc node --to-desktop temporary --follow'
+  alm-snippet colored-wrapped wm_t7 key | ~/.config/alsnip/user-io say-bar "sxhkd (alt 7)" & alc-store-and-eval 'bspc node --to-desktop temporary --follow'
 
 super + e; super + b
-  alm-snippet colored-wrapped tmpbr key | alc-talk say-bar "sxhkd (e b)" & alc-store-and-eval 'alc-terminal --float -e sh -c '"'"'cd /tmp; broot'"'"''
+  alm-snippet colored-wrapped tmpbr key | ~/.config/alsnip/user-io say-bar "sxhkd (e b)" & alc-store-and-eval 'alc-terminal --float -e sh -c '"'"'cd /tmp; broot'"'"''
 
 super + e; super + e
-  alm-snippet colored-wrapped xprt key | alc-talk say-bar "sxhkd (e e)" & alc-store-and-eval 'export'
+  alm-snippet colored-wrapped xprt key | ~/.config/alsnip/user-io say-bar "sxhkd (e e)" & alc-store-and-eval 'export'
 
 super + o
   alc-snippet gui

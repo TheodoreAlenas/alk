@@ -1,7 +1,7 @@
 #!/bin/env sh
 
 get_command_from_user() {
-  raw_choice="$(alm-snippet preview "$1" | alc-talk recommend)"
+  raw_choice="$(alm-snippet preview "$1" | ~/.config/alsnip/user-io recommend)"
   test "$raw_choice" || return 1
   printf "%s" "$raw_choice" | alm-snippet unpreview
 }
@@ -9,7 +9,7 @@ get_command_from_user() {
 
 assemble_and_execute() {
   alc-snippet-assemble assemble "$@" || exit
-  alc-talk say-bar "${0##*/} (script assembled)" < "$3"
+  ~/.config/alsnip/user-io say-bar "${0##*/} (script assembled)" < "$3"
   alc-store-and-eval < "$2"
 }
 

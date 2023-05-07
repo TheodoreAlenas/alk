@@ -2,6 +2,7 @@
 
 gather_arg() {
   case "$1" in
+    say-bar) alc-talk say-bar "$2" ;;
     ls) xargs ls | alc-talk recommend '' ;;
     recommend) cat | alc-talk recommend '' ;;
     demand) cat | alc-talk demand '' ;;
