@@ -29,6 +29,10 @@ source_all() {
   done
 }
 
+list_all() {
+  printf %s "$fn" | tr : '\n' | grep -vF SOURCE | grep "${1:-.}" | cut -d+ -f1 
+}
+
 assert_fn_exists() {
   asfnex_type="$(type "$1")"
   if [ "${asfnex_type#*function}" ]
@@ -113,110 +117,100 @@ gather_data() {
   "fn_$cmd" "$@"
 }
 
-awk_command_for_listing() {
-  lwbd_for_keys="! /^SOURCE\+is-/ && /+$1+|+$1\$/"
-  lwbd_for_source='/^SOURCE\+is-/'
-  shift
+print_id_keys_and_source() {
 
-  # shellcheck disable=2016
-  lwbd_change_source='
-  s = $0;
-  sub(/^.*\+is-/, "/", s);
-  '
-
-  # shellcheck disable=2016
-  lwbd_keys='
-  k = $0;
-  gsub(/-control-/, "-^-", k);
-  gsub(/-alt-/, "-!-", k);
-  gsub(/-shift-/, "-#-", k);
-  sub(/^[^+]*/, "", k);
-  sub(/^(.*+)*key\+is-/, ".", k);
-  sub(/\+.*/, "", k);
-  sub(/#/, "+", k);
-  gsub(/-/, "", k);
-  '
-
-  # shellcheck disable=2016
-  lwbd_typical_preview='
-  if(match($0, "+special-preview"))  # deprecated
-    tp = "special-preview";
-  else
-    tp = "typical-preview";
-  '
-
-  # shellcheck disable=2016
-  lwbd_func='
-  f = $0;
-  sub(/+.*/, "", f);
-  '
-
-  lwbd_awk=''
-  for lwbd_arg
-  do
-    case "$lwbd_arg" in
-      func) lwbd_awk="$lwbd_awk $lwbd_func print f;" ;;
-      typical_preview) lwbd_awk="$lwbd_awk $lwbd_typical_preview print tp;" ;;
-      formatted_func) lwbd_awk="$lwbd_awk $lwbd_func "'printf("%-5s |\n", f)' ;;
-      keys) lwbd_awk="$lwbd_awk $lwbd_keys print k;" ;;
-      func_and_keys)
-        lwbd_awk="$lwbd_awk $lwbd_func $lwbd_keys"
-        lwbd_awk="$lwbd_awk "'printf("%-5s %-4s|\n", f, k);'
-        ;;
-      func_keys_souce)
-        lwbd_awk="$lwbd_awk $lwbd_func $lwbd_keys"
-        lwbd_awk="$lwbd_awk "'printf("%-5s %-4s%-8s|\n", f, k, s);'
-        ;;
-    esac
-  done
-
-  printf "%s\n" 'BEGIN {RS = ":"} '"$lwbd_for_keys { $lwbd_awk } $lwbd_for_source { $lwbd_change_source }"
+  # shellcheck disable=SC2016
+  awk 'BEGIN { RS = ":"; FS = "+"; } 
+  func extract_key()
+  {
+    k = $0;
+    gsub(/-control-/, "-^-", k);
+    gsub(/-alt-/, "-!-", k);
+    gsub(/-shift-/, "-#-", k);
+    sub(/[^+]*/, "", k);
+    sub(/^.*\+key\+is-/, ".", k);
+    sub(/\+.*/, "", k);
+    sub(/#/, "+", k);
+    gsub(/-/, "", k);
+    print k;
+  }
+  '"/\+$1\>/"' { print $1; extract_key(); print s; print "===pksaa" }
+  /^SOURCE\+is-/ { s = $0; sub(/^.*\+is-/, "/", s); }'
 }
 
-list_with_binding() {
-  printf "%s" "$fn" | awk "$(awk_command_for_listing "$@")"
-}
-
-append_scripts() {
-  while read -r apsc_func; read -r _apsc_typical_preview; read -r apsc_func_and_more
+append_key_script() {
+  while
+    read -r asbe_fn
+    read -r asbe_key
+    read -r asbe_source
+    read -r _
   do
-    act=script
-    "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | {
-      while read -r apsc_line
-      do printf "%s %s\n" "$apsc_func_and_more" "$apsc_line"
-      done
-    }
+    printf "%-5s %-3s %-7s | \n" "$asbe_fn" "$asbe_key" "$asbe_source"
+    act=script "fn_$asbe_fn" ARG1 ARG2 ARG3 ARG4 ARG5
+    printf "%s\n" "===asbe"
   done
 }
 
-append_script_heads() {
-  apsc_separator='"___________________________________________________"'
+format_key_preview() {
+  awk '
+  /===asbe/ { s = NR }
+  NR == s + 1 { p = $0 }
+  NR >= s + 2 { printf("%s%s\n", p, $0) }
+  '
+}
+
+print_id_preview_and_source() {
+  awk 'BEGIN { RS = ":"; FS = "+"; } 
+  func extract_preview()
+  {
+    if (match($0, "+preview-stdout"))
+      print "preview-stdout"
+    else
+      print ""
+  }
+  '"/\+$1\>/"' { print $1; extract_preview(); print s; print "===pksaa" }
+  /^SOURCE\+is-/ { s = $0; sub(/^.*\+is-/, "/", s); }'
+}
+
+append_copyable_script() {
   while
     read -r apsc_func
-    read -r _apsc_typical_preview
-    read -r apsc_func_and_more
+    read -r apsc_preview_stdout
+    read -r apsc_source
+    read -r _
   do
-    act=script
-    {
-      printf "%s\n" "$apsc_func_and_more"
-      if printf %s "$fn" | grep -q ":$apsc_func\b[^:]*\bpreview-stdout\b"
-      then
-        printf '> '
-        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
-        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | sh
-      else
-        "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
-      fi
-    } | awk 'NR == 1 {h=$0; print $0} NR > 1 && NR < 10 {printf("%s   %s\n", h, $0)} END {printf("%s%s\n", h, '"$apsc_separator"')}'
+    printf "%-5s %-7s |\n" "$apsc_func" "$apsc_source"
+    printf "\n"
+    if [ "$apsc_preview_stdout" ]
+    then
+      printf '> '
+      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
+      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | sh
+    else
+      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
+    fi
+    printf "___asbe\n"
+    printf "===asbe\n"
   done
+}
+
+format_copyables_preview() {
+  awk '
+  /___asbe/ { printf("%s%s\n", p,
+  "______________________________________________");
+  s = NR - 1; }
+  /===asbe/ { s = NR }
+  NR == s + 1 { p = $0 }
+  NR >= s + 2 { printf("%s   %s\n", p, $0) }
+  '
 }
 
 preview() {
-  prvw_key="${1:-key}"
-  if [ "$prvw_key" = 'key' ]
-  then list_with_binding "$prvw_key" func typical_preview func_keys_souce | append_scripts
-  else list_with_binding "$prvw_key" func typical_preview formatted_func | append_script_heads
-  fi
+  case "$1" in
+    (key) printf %s "$fn" | print_id_keys_and_source "$1" | append_key_script | format_key_preview ;;
+    (copy) printf %s "$fn" | print_id_preview_and_source "$1" | append_copyable_script | format_copyables_preview ;;
+    (*) printf %s "$fn" | print_id_preview_and_source "$1" | append_copyable_script | format_copyables_preview ;;
+  esac
 }
 unpreview() {
   cut -d' ' -f1
@@ -387,7 +381,7 @@ print_duplicates() {
   printf "%s" "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE | sort | uniq -D
 }
 lacking_newline() {
-  for f in $(list_with_binding '' func)
+  for f in $(printf %s "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE)
   do
     if [ "$(act=script "fn_$f" | tr -d -c '\n' | tr '\n' a)" = '' ]
     then printf "%s\n" "$f"
@@ -398,7 +392,7 @@ lacking_newline() {
 run() {
   case "$1" in
     --help | -h) help ;;                     #            Print this help
-    list | -l) list_with_binding "$2" func ;;   # [TAG]      Get a list of script names
+    list) list_all "$2" ;;   # [TAG]      Get a list of script IDs
     preview | -p) preview "$2" ;;          # [TAG]      Preview all snippets with the tag
     unpreview | -u) unpreview ;;           #            stdin preview, stdout original
 
@@ -418,7 +412,6 @@ run() {
 
     expose-fn) printf "%s\n" "$fn" ;;      # for debugging. Unstable, don't code with it.
     expose-awk) awk_command_for_listing "$@" ;;  # for debugging. Unstable, don't code with it.
-    expose-lwb) list_with_binding "$@" ;;  # for debugging. Unstable, don't code with it.
 
     *) echo 'Sorry invalid flag, try --help' >&2 ; exit 1 ;;
   esac

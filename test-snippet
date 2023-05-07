@@ -38,17 +38,18 @@ test_simple_script() {
   then die "--help doesn't prove the export was considered"
   fi
 
-  choice="$("$program" list tagnameofa | head -1)"
-  if ! [ "$("$program" print "$choice" script)" = 'the-script' ]
-  then die "single script can't be listed / printed"
-  fi
+  "$program" list tagnameofa | {
+    while read -r id
+    do "$program" print "$id" script
+    done
+  } | grep -q the-script || die "script can't be listed / printed"
 
   if ! [ "$("$program" list nosuchtag)" = '' ]
   then die "listing non existent tag"
   fi
 
   if ! "$program" preview tagnameofa | grep -q the-script
-  then die "single script can't be previewed" 
+  then die "script can't be previewed" 
   fi
 
   if ! [ "$("$program" preview nosuchtag)" = '' ]
