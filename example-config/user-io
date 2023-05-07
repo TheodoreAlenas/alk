@@ -45,6 +45,14 @@ main() {
   case "$1" in
     say-bar) use_lemonbar "$2" ;;
     print-terminal-wrapper) printf 'alacritty -e\n' ;;
+    execute)  # you can be more creative here. I also store the
+      mkdir -p /tmp/al  # scripts in a history file.
+      stdout="$(mktemp /tmp/al/stdout-"$(basename "$0")"-XXXX)"
+      stderr="$(mktemp /tmp/al/stderr-"$(basename "$0")"-XXXX)"
+      sh -c "$1" 1> "$stdout" 2> "$stderr"
+      echo "===" | cat "$stdout" - "$stderr" | alacritty -e less
+      rm "$stdout" "$stderr"
+      ;;
 
     ls) xargs ls | dmenu -i ;;
     recommend) cat | dmenu -i ;;

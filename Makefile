@@ -1,10 +1,8 @@
-MOUNT = ${HOME}/.local/albin
 
 TESTS = test-snippet test-snippet-config sxhkd/test-snippet-to-sxhkd
 
-FINAL_EXECS_SNIP = alc-snippet-assemble alc-snippet alm-snippet
-FINAL_EXECS_EXT = $(wildcard external/*)
-FINAL_EXECS = $(addprefix ${MOUNT}/,${FINAL_EXECS_SNIP} ${FINAL_EXECS_EXT})
+MOUNT = ${HOME}/.local/albin
+FINAL_EXECS = $(addprefix ${MOUNT}/,alc-snippet alm-snippet)
 
 CONFIG_DIR = ${HOME}/.config/alsnip
 
@@ -27,9 +25,6 @@ ${CONFIG_DIR}/auto.sh: ${CONFIG_DIR}
 
 ${MOUNT}/alc-snippet: alc-snippet target/res-test-snippet
 	cp alc-snippet $@
-
-${MOUNT}/alc-snippet-assemble: alc-snippet-assemble target/res-test-snippet
-	cp alc-snippet-assemble $@
 
 ${MOUNT}/alm-snippet: alm-snippet target/res-test-snippet
 	cp alm-snippet $@

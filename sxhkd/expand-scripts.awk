@@ -22,7 +22,7 @@ NR == s + 4 {
 
     printf("alm-snippet colored-wrapped %s key ", r_snippet_id);  # paint
     printf("| ~/.config/alsnip/user-io say-bar \"sxhkd (%s)\" & ", r_keys);
-    printf("alc-store-and-eval ");
+    printf("~/.config/alsnip/user-io execute ");
 
   }
   if (should_quote)
