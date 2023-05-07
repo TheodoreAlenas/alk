@@ -1,27 +1,75 @@
 #!/bin/env sh
 
-gather_arg() {
+# ╺┳┓┏━╸┏━┓┏━╸┏┓╻╺┳┓┏━╸┏┓╻┏━╸╻┏━╸┏━┓
+#  ┃┃┣╸ ┣━┛┣╸ ┃┗┫ ┃┃┣╸ ┃┗┫┃  ┃┣╸ ┗━┓
+# ╺┻┛┗━╸╹  ┗━╸╹ ╹╺┻┛┗━╸╹ ╹┗━╸╹┗━╸┗━┛
+# Dependencies
+
+# The current configuration wires together alsnip and:
+#
+#    lemonbar  sxiv  dmenu  fzf  alacritty
+#
+# and considers that lemonbar has been initialized using
+# touch /tmp/lemonbar && tail -F /tmp/lemonbar | lemonbar
+
+
+parse_colors_for_lemonbar() {
+
+  # shellcheck disable=SC2016
+  ssgb_awk='
+  BEGIN { printf("%s", "%{c}  "); }
+  NR % 2 == 1 { printf("%s", $0); }
+  NR % 2 == 0 {
+  if      ($0 == "normal")    printf("%s", "%{F-}");
+  else if ($0 == "newline")   printf("%s", "%{B#234}$%{B-}");
+  else if ($0 == "secondary") printf("%s", "%{F#398}");
+  else if ($0 == "attention") printf("%s", "%{F#fa2}");
+  else if ($0 == "pale")      printf("%s", "%{F#567}");
+  else if ($0 == "selection") printf("%s", "%{R}");
+  else                        printf("%s", "%{F-}");
+  }
+  END { printf("%{F-}  \n"); }
+  '
+
+  awk "$ssgb_awk"
+}
+
+use_lemonbar() {
+  {
+    printf "%s" "$1"
+    parse_colors_for_lemonbar
+  } | awk '{print $0}' >> /tmp/lemonbar  # awk buffers the line
+}
+
+main() {
   case "$1" in
-    say-bar) alc-talk say-bar "$2" ;;
-    ls) xargs ls | alc-talk recommend '' ;;
-    recommend) cat | alc-talk recommend '' ;;
-    demand) cat | alc-talk demand '' ;;
-    get-image-in) alc-talk get-image-in '' ;;
-    get-image-piped) sh | alc-talk get-image '' ;;
-    get-image) alc-talk get-image '' ;;
-    get-line) alc-talk get-line '' ;;
-    command) sh | alc-talk recommend '' ;;
+    say-bar) use_lemonbar "$2" ;;
+    ls) xargs ls | dmenu -i ;;
+    recommend) cat | dmenu -i ;;
+    demand) cat | dmenu -i ;;
+    get-image) xargs sxiv -t -o ;;
+    get-image-piped) sh | xargs sxiv -t -o ;;
+    get-image-in) read -r dir; sxiv -t -o "$dir" | sed "s|$dir/||" ;;
+    get-line) : | dmenu -p "$2" ;;
+    command) sh | dmenu -i ;;
     manip)
-      read -r gtrg_manipulation
-      sh | alc-talk recommend "$1" | sh -c "$gtrg_manipulation"
+      read -r manipulation
+      sh | dmenu -i -p "$1" | sh -c "$manipulation"
       ;;
     preview)
-      read -r gtrg_previewer
-      { printf "%s\n" "$gtrg_previewer"; sh; } | alc-talk preview ''
+      read -r previewer
+      # shellcheck disable=SC2016
+      cmd='fzf --preview="$0" --border --border-label=" $1 " < "$2" > "$3"'
+      i="$(mktemp /tmp/alsnip-preview-i-XXXXXX)"
+      o="$(mktemp /tmp/alsnip-preview-o-XXXXXX)"
+      cat > "$i"
+      alacritty -e sh -c "$cmd" "$previewer" "$2" "$i" "$o"
+      cat "$o"
+      rm "$i" "$o"
       ;;
-    *) printf "Invalid / unimplemented: '%s'\n" "$1" | alc-talk say-error "Error" ;;
+    *) printf "Invalid / unimplemented: '%s'\n" "$1" | dmenu -p "Error" ;;
   esac
 }
 
-gather_arg "$@"
+main "$@"
 
