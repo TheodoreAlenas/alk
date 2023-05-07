@@ -61,8 +61,7 @@ print_wrapped() {
   key_type="${cut_before%%+*}"
   case "$key,$key_type" in
     (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
-    (key,term) printf "alc-terminal --float -e sh -c '%s'\n" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
-    (key,term-k) printf "alc-terminal --float -k '%s'\n" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
+    (key,term) printf "%s sh -c '%s'\n" "$terminal_wrapper" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
     (key,) "fn_$cmd" "$@" ;;
 
     (copy,stdout) printf "{ %s; } | %s\n" "$("fn_$cmd" "$@")" "xclip -in -selection clipboard" ;;
@@ -91,8 +90,7 @@ colored_wrapped() {
 
   case "$key,$(printf %s "$fn" | sed "s/.*\b$cmd\b[^:]*+$key-\([a-zA-Z0-9-]*\).*/\1/")" in
     (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
-    (key,term) printf "\npale\nalc-terminal --float -e sh -c '\nnormal\n%s\npale\n\n'" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
-    (key,term-k) printf "\npale\nalc-terminal --float -k '\nnormal\n%s\npale\n\n'" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
+    (key,term) printf "\npale\n%s sh -c '\nnormal\n%s\npale\n\n'" "$terminal_wrapper" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
     (key,"$fn") printf "%s\n" "$painted" ;;
 
     (copy,stdout) printf "\npale\n{ \nnormal\n%s\npale\n; } | %s\n" "$painted" "xclip -in -selection clipboard" ;;
@@ -393,17 +391,31 @@ run() {
   case "$1" in
     --help | -h) help ;;                     #            Print this help
     list) list_all "$2" ;;   # [TAG]      Get a list of script IDs
-    preview | -p) preview "$2" ;;          # [TAG]      Preview all snippets with the tag
-    unpreview | -u) unpreview ;;           #            stdin preview, stdout original
+    preview | p) preview "$2" ;;          # [TAG]      Preview all snippets with the tag
+    unpreview) unpreview ;;           #            stdin preview, stdout original
 
-    info | -i) snippet_info "$2" ;;        # SCRIPT_NAME
+    info | i) snippet_info "$2" ;;        # SCRIPT_NAME
     self-or-stdout) self_or_stdout "$2" "$3" ;;  # TAG SCRIPT_NAME  consider as-is or pipe to sh
 
-    print | -e) shift; gather_data "$@" ;; # SCRIPT_NAME script | descr | arg1 | arg2 | arg3
-    print-wrapped) shift; print_wrapped "$@" ;; # SCRIPT_NAME TAG
-    colored-wrapped) shift; colored_wrapped "$@" ;; # SCRIPT_NAME TAG
-    chop-key-bindings) chop_key_bindings | append_scripts_to_key_chops ;;  # for hooking hotkey systems (try it)
-    aliases-as-posix) chop_aliases | posix_from_alias_chops ;;  # for hooking hotkey systems (try it)
+    print | e) # SCRIPT_NAME script | descr | arg1 | arg2 | arg3
+      shift
+      gather_data "$@"
+      ;;
+    print-wrapped) # SCRIPT_NAME TAG
+      shift
+      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
+      print_wrapped "$@"
+      ;;
+    colored-wrapped) # SCRIPT_NAME TAG
+      shift
+      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
+      colored_wrapped "$@"
+      ;;
+    chop-key-bindings)  # for hooking hotkey systems (try it)
+      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
+      chop_key_bindings | append_scripts_to_key_chops
+      ;;
+    aliases-as-posix) chop_aliases | posix_from_alias_chops ;;
 
     print-duplicates) print_duplicates ;;  # outputs the duplicates to stdout
     there-are-duplicates) [ "$(print_duplicates)" ] || exit 1 ;;  # exits with 1 if there are duplicates
@@ -411,8 +423,6 @@ run() {
     there-are-newline-lackers) [ "$(lacking_newline)" ] || exit 1 ;;  # silent, exits with 1
 
     expose-fn) printf "%s\n" "$fn" ;;      # for debugging. Unstable, don't code with it.
-    expose-awk) awk_command_for_listing "$@" ;;  # for debugging. Unstable, don't code with it.
-
     *) echo 'Sorry invalid flag, try --help' >&2 ; exit 1 ;;
   esac
 }

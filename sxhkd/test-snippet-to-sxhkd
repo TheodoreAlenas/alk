@@ -1,6 +1,7 @@
 #!/bin/env sh
 
 program=./alm-snippet
+export ALSNIP_USER_IO=example-config/user-io
 
 die() {
   printf "\033[0;31m[%s] %s\033[0m\n" "$(basename "$0")" "$1" >&2
@@ -101,7 +102,7 @@ super + alt + 7
   alm-snippet colored-wrapped wm_t7 key | ~/.config/alsnip/user-io say-bar "sxhkd (alt 7)" & alc-store-and-eval 'bspc node --to-desktop temporary --follow'
 
 super + e; super + b
-  alm-snippet colored-wrapped tmpbr key | ~/.config/alsnip/user-io say-bar "sxhkd (e b)" & alc-store-and-eval 'alc-terminal --float -e sh -c '"'"'cd /tmp; broot'"'"''
+  alm-snippet colored-wrapped tmpbr key | ~/.config/alsnip/user-io say-bar "sxhkd (e b)" & alc-store-and-eval 'alacritty -e sh -c '"'"'cd /tmp; broot'"'"''
 
 super + e; super + e
   alm-snippet colored-wrapped xprt key | ~/.config/alsnip/user-io say-bar "sxhkd (e e)" & alc-store-and-eval 'export'

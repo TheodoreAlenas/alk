@@ -1,6 +1,7 @@
 #!/bin/env sh
 
 program=./alm-snippet
+export ALSNIP_USER_IO=example-config/user-io
 
 die() {
   if [ "$INTERACTIVE" = no ]
@@ -208,7 +209,7 @@ test_self_or_stdout() {
   get_and_expect "$tsots_stdout" "$tsots_expected"
 
   tsots_stdout="$("$program" print-wrapped "$("$program" preview key | grep -F in-term | "$program" unpreview)" key daddy)"
-  tsots_expected="alc-terminal --float -e sh -c 'echo '\"'\"'in-term'\"'\"' \"\$1\" | tr . -'"
+  tsots_expected="alacritty -e sh -c 'echo '\"'\"'in-term'\"'\"' \"\$1\" | tr . -'"
   get_and_expect "$tsots_stdout" "$tsots_expected"
 
   tsots_stdout="$("$program" colored-wrapped "$("$program" preview key | grep -F script-me | "$program" unpreview)" key daddy)"

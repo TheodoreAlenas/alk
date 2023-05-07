@@ -44,6 +44,8 @@ use_lemonbar() {
 main() {
   case "$1" in
     say-bar) use_lemonbar "$2" ;;
+    print-terminal-wrapper) printf 'alacritty -e\n' ;;
+
     ls) xargs ls | dmenu -i ;;
     recommend) cat | dmenu -i ;;
     demand) cat | dmenu -i ;;

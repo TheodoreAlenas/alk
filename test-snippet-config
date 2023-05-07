@@ -1,6 +1,6 @@
 #!/bin/env sh
 
-program=./alm-snippet
+program=alm-snippet
 
 die() {
   if [ "$INTERACTIVE" = no ]
