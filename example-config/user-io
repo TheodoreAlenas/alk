@@ -1,0 +1,26 @@
+#!/bin/env sh
+
+gather_arg() {
+  case "$1" in
+    ls) xargs ls | alc-talk recommend '' ;;
+    recommend) cat | alc-talk recommend '' ;;
+    demand) cat | alc-talk demand '' ;;
+    get-image-in) alc-talk get-image-in '' ;;
+    get-image-piped) sh | alc-talk get-image '' ;;
+    get-image) alc-talk get-image '' ;;
+    get-line) alc-talk get-line '' ;;
+    command) sh | alc-talk recommend '' ;;
+    manip)
+      read -r gtrg_manipulation
+      sh | alc-talk recommend "$1" | sh -c "$gtrg_manipulation"
+      ;;
+    preview)
+      read -r gtrg_previewer
+      { printf "%s\n" "$gtrg_previewer"; sh; } | alc-talk preview ''
+      ;;
+    *) printf "Invalid / unimplemented: '%s'\n" "$1" | alc-talk say-error "Error" ;;
+  esac
+}
+
+gather_arg "$@"
+

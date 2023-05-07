@@ -43,29 +43,6 @@ append_to_the_bar() {
   esac
 }
 
-gather_arg() {
-  read -r gtrg_type
-  case "$gtrg_type" in
-    ls) xargs ls | alc-talk recommend '' ;;
-    recommend) cat | alc-talk recommend '' ;;
-    demand) cat | alc-talk demand '' ;;
-    get-image-in) alc-talk get-image-in '' ;;
-    get-image-piped) sh | alc-talk get-image '' ;;
-    get-image) alc-talk get-image '' ;;
-    get-line) alc-talk get-line '' ;;
-    command) sh | alc-talk recommend '' ;;
-    manip)
-      read -r gtrg_manipulation
-      sh | alc-talk recommend "$gtrg_type" | sh -c "$gtrg_manipulation"
-      ;;
-    preview)
-      read -r gtrg_previewer
-      { printf "%s\n" "$gtrg_previewer"; sh; } | alc-talk preview ''
-      ;;
-    *) printf "Invalid / unimplemented: '%s'\n" "$gtrg_type" | alc-talk say-error "Error" ;;
-  esac
-}
-
 assemble() {
   asmbc_script_name="$1" asmbc_dump_here="$2" asmbc_dump_colors="$3" asmbc_is_key="$4"
 
@@ -80,7 +57,7 @@ assemble() {
     asmbc_bar_message="$(printf "%s\n" "$arg_recipe" | append_to_the_bar)"
     tell_the_bar "$asmbc_script_name" "$asmbc_args_as_lines" "$asmbc_is_key" "$asmbc_bar_message"
 
-    user_input="$(printf "%s\n" "$arg_recipe" | gather_arg)"
+    user_input="$(printf "%s\n" "$arg_recipe" | { read -r t; ~/.config/alsnip/user-io "$t"; })"
     test "$user_input" || {
       tell_the_bar "$asmbc_script_name" "$asmbc_args_as_lines" "$asmbc_is_key" "${0##*/} (aborted)"
       exit 1
@@ -106,7 +83,4 @@ shift
 case "$first_arg" in
   --help) alc-generate-help "$0" "first_arg" ; grep -A 2 '() {' "$0" ;;
   assemble) assemble "$@" ;;
-  to-tell) to_tell_the_bar "$@" ;;  # for debugging
-  tell) tell_the_bar "$@" ;;  # for debugging
-  gather) gather_arg ;;  # for debugging
 esac
