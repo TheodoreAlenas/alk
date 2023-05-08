@@ -1,17 +1,21 @@
 
 TESTS = test-snippet test-snippet-config sxhkd/test-snippet-to-sxhkd
 
-MOUNT = ${HOME}/.local/albin
+MOUNT = ${HOME}/.local/share/alsnip
 FINAL_EXECS = $(addprefix ${MOUNT}/,alc-snippet alm-snippet)
 
 CONFIG_DIR = ${HOME}/.config/alsnip
 
-all: target ${MOUNT} ${FINAL_EXECS} ${CONFIG_DIR}/auto.sh ~/.config/zsh/alsnip-aliases.sh ~/.config/sxhkd/sxhkdrc
+all: target ${MOUNT} ${FINAL_EXECS} ${CONFIG_DIR}/auto.sh
 
 clean:
 	rm -f ${FINAL_EXECS}
 	rm target/*
 	rm -f ${CONFIG_DIR}/auto.sh
+
+${MOUNT}:
+	mkdir -p $@
+	cp -rT . $@
 
 target:
 	mkdir -p $@
@@ -50,3 +54,5 @@ ${HOME}/.config/zsh/alsnip-aliases.sh: $(wildcard ${CONFIG_DIR}/*) target/res-te
 	alm-snippet aliases-as-posix > $@
 
 
+${MOUNT}/alc-generate-help: alc-generate-help
+	cp alc-generate-help $@

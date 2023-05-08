@@ -96,16 +96,16 @@ super + w; super + n
   alm-snippet colored-wrapped nons key | ~/.config/alsnip/user-io say-bar "sxhkd (w n)" & ~/.config/alsnip/user-io execute ''"'"'\{'"'"'\}'"'"''
 
 super + w; super + r
-  alm-snippet colored-wrapped wm_ru key | ~/.config/alsnip/user-io say-bar "sxhkd (w r)" & ~/.config/alsnipuser-io execute 'bspc rule -l'
+  alm-snippet colored-wrapped wm_ru key | ~/.config/alsnip/user-io say-bar "sxhkd (w r)" & ~/.config/alsnip/user-io execute 'bspc rule -l'
 
 super + alt + 7
-  alm-snippet colored-wrapped wm_t7 key | ~/.config/alsnip/user-io say-bar "sxhkd (alt 7)" & ~/.config/alsnipuser-io execute 'bspc node --to-desktop temporary --follow'
+  alm-snippet colored-wrapped wm_t7 key | ~/.config/alsnip/user-io say-bar "sxhkd (alt 7)" & ~/.config/alsnip/user-io execute 'bspc node --to-desktop temporary --follow'
 
 super + e; super + b
-  alm-snippet colored-wrapped tmpbr key | ~/.config/alsnip/user-io say-bar "sxhkd (e b)" & ~/.config/alsnipuser-io execute 'alacritty -e sh -c '"'"'cd /tmp; broot'"'"''
+  alm-snippet colored-wrapped tmpbr key | ~/.config/alsnip/user-io say-bar "sxhkd (e b)" & ~/.config/alsnip/user-io execute 'alacritty -e sh -c '"'"'cd /tmp; broot'"'"''
 
 super + e; super + e
-  alm-snippet colored-wrapped xprt key | ~/.config/alsnip/user-io say-bar "sxhkd (e e)" & ~/.config/alsnipuser-io execute 'export'
+  alm-snippet colored-wrapped xprt key | ~/.config/alsnip/user-io say-bar "sxhkd (e e)" & ~/.config/alsnip/user-io execute 'export'
 
 super + o
   alc-snippet gui

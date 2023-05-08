@@ -7,10 +7,15 @@
 
 # The current configuration wires together alsnip and:
 #
-#    lemonbar  sxiv  dmenu  fzf  alacritty
+#    lemonbar  sxiv  dmenu  fzf  alacritty  zsh
 #
 # and considers that lemonbar has been initialized using
 # touch /tmp/lemonbar && tail -F /tmp/lemonbar | lemonbar
+# To change what programs are considered, you should only
+# change this file.
+#
+# The mindset is that the way you hook up your OS to this
+# snippet system is a form of configuration.
 
 
 parse_colors_for_lemonbar() {
@@ -43,6 +48,23 @@ use_lemonbar() {
 
 main() {
   case "$1" in
+    generate)
+      if alm-snippet there-are-duplicates
+      then alm-snippet print-duplicates "nope, there are duplicates: " >&2
+      else
+        cp -v ~/.config/sxhkd/sxhkdrc ~/.config/sxhkd/sxhkdrc.bk || exit 1
+        ~/.local/share/alsnip/sxhkd/alc-snippet-to-sxhkd > ~/.config/sxhkd/sxhkdrc || exit 1
+
+        cp -v ~/.config/zsh/alsnip-aliases.sh ~/.config/zsh/alsnip-aliases.sh.bk
+        alm-snippet aliases-as-posix > ~/.config/zsh/alsnip-aliases.sh || exit 1
+
+        printf "%s\n" "Make sure ~/.config/zsh/alsnip-aliases.sh is hooked up."
+        printf "%s\n" "NOTE: sxhkd isn't restarted through user-io "
+        printf "%s" "with this configuration script."
+        printf "%s\n" "Otherwise, that was it."
+      fi
+      ;;
+
     say-bar) use_lemonbar "$2" ;;
     print-terminal-wrapper) printf 'alacritty -e\n' ;;
     execute)  # you can be more creative here. I also store the
@@ -50,7 +72,8 @@ main() {
       stdout="$(mktemp /tmp/al/stdout-"$(basename "$0")"-XXXX)"
       stderr="$(mktemp /tmp/al/stderr-"$(basename "$0")"-XXXX)"
       sh -c "$1" 1> "$stdout" 2> "$stderr"
-      echo "===" | cat "$stdout" - "$stderr" | alacritty -e less
+      o="$(cat "$stdout")"; [ "$o" ] && alacritty -e less "$stdout"
+      e="$(cat "$stderr")"; [ "$e" ] && alacritty -e less "$stderr"
       rm "$stdout" "$stderr"
       ;;
 
@@ -82,4 +105,9 @@ main() {
 }
 
 main "$@"
+# Yes, you can try out this file by runnig it. That's more or less the point.
+# echo hello | ./user-io recommend
+#
+# Make sure it has execute permissions, which it has out of the box. Otherwise
+# chmod +x user-io
 

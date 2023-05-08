@@ -1,6 +1,14 @@
 # shellcheck disable=SC2154
 # shellcheck disable=SC2016
 
+
+fn=rswm+key+is-X:"$fn"
+fn_rswm() {
+  case "$act" in
+    script) printf "killall bspwm\n" ;;
+  esac
+}
+
 fn=trans+key:"$fn"
 fn_trans() {
   case "$act" in

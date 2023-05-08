@@ -16,3 +16,10 @@ fn_vi() {
   esac
 }
 
+fn=term+key+is-t:"$fn"
+fn_term() {
+  case "$act" in
+    script) printf "alacritty\n" ;;
+  esac
+}
+

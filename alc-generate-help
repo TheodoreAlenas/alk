@@ -1,0 +1,63 @@
+#!/bin/env sh
+
+my_name="$(basename "$0")"
+
+explain_usage() {
+cat <<EOM
+usage: $my_name FILE LABEL
+Takes:
+
+case "\$LABEL" in
+  arg-one | a1) echo hello ;;  # comment 1
+  arg-two | a2) echo hello ;;  # comment 2
+esac
+
+Gives:
+  arg-one, a1: comment 1
+  arg-two, a2: comment 2
+
+Alternative arguments:
+  -h, --help
+EOM
+}
+
+run() {
+  file="$1"
+  label="$2"
+
+  init_no_match='BEGIN { inside=0 }'
+  set_match="/case.*$label.*in/ { inside=1 }"
+  set_no_match="/esac/ { inside=0 }"
+  main='{if (inside) print $0}'
+
+  awk_command="$init_no_match $set_match $set_no_match $main"
+
+  word='\([a-zA-Z0-9-]\+\)'
+
+  match_comment="^\s*$word\s*).*"'#\s*\(.*\)'
+  replace_comment='  \1:    \2'
+
+  match_simple="^\s*$word\s*).*"
+  replace_simple='  \1'
+
+  match_long_comment="^\s*$word\s*|\s*$word\s*).*"'#\s*\(.*\)'
+  replace_long_comment='  \1, \2:    \3'
+
+  match_long_simple="^\s*$word\s*|\s*$word\s*).*"
+  replace_long_simple='  \1, \2'
+
+  s_comment="s/$match_comment/$replace_comment/p"
+  s_simple="s/$match_simple/$replace_simple/p"
+  l_comment="s/$match_long_comment/$replace_long_comment/p"
+  l_simple="s/$match_long_simple/$replace_long_simple/p"
+  s_total="$s_comment ; $s_simple ; $l_comment ; $l_simple"
+
+  awk "$awk_command" "$file" | sed -n "$s_total"
+}
+
+case "$1" in
+  -h | --help) explain_usage ;;
+  *) run "$@" ;;
+esac
+
+

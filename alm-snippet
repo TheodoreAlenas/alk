@@ -376,6 +376,7 @@ append_scripts_to_key_chops() {
 }
 
 print_duplicates() {
+  printf %s "$1"
   printf "%s" "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE | sort | uniq -D
 }
 lacking_newline() {
@@ -417,7 +418,7 @@ run() {
       ;;
     aliases-as-posix) chop_aliases | posix_from_alias_chops ;;
 
-    print-duplicates) print_duplicates ;;  # outputs the duplicates to stdout
+    print-duplicates) print_duplicates "$2" ;;  # outputs the duplicates to stdout
     there-are-duplicates) [ "$(print_duplicates)" ] || exit 1 ;;  # exits with 1 if there are duplicates
     lacking-newline) lacking_newline ;;  # prints scripts that lack newlines
     there-are-newline-lackers) [ "$(lacking_newline)" ] || exit 1 ;;  # silent, exits with 1

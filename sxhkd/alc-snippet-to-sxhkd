@@ -2,7 +2,7 @@
 
 print_sxhkdrc() {
   # TODO don't keep it like that
-  alm-snippet chop-key-bindings | awk -f sxhkd/expand-scripts.awk | awk -f sxhkd/expand-keys.awk
+  alm-snippet chop-key-bindings | awk -f ~/.local/share/alsnip/sxhkd/expand-scripts.awk | awk -f ~/.local/share/alsnip/sxhkd/expand-keys.awk
 }
 
 replace_sxhkdrc() {
