@@ -90,7 +90,7 @@ colored_wrapped() {
 
   case "$key,$(printf %s "$fn" | sed "s/.*\b$cmd\b[^:]*+$key-\([a-zA-Z0-9-]*\).*/\1/")" in
     (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
-    (key,term) printf "\npale\n%s sh -c '\nnormal\n%s\npale\n\n'" "$terminal_wrapper" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
+    (key,term) printf "\npale\n%s sh -c '\nnormal\n%s\npale\n'\n" "$terminal_wrapper" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
     (key,"$fn") printf "%s\n" "$painted" ;;
 
     (copy,stdout) printf "\npale\n{ \nnormal\n%s\npale\n; } | %s\n" "$painted" "xclip -in -selection clipboard" ;;
@@ -219,10 +219,10 @@ snippet_info() {
 
   # shellcheck disable=SC2088
   sninf_src="$(printf "%s" "$fn" | sed 's/:'"$sninf_fn"'[+:].*// ; s/.*SOURCE+is-// ; s/:.*//')"
-  sninf_file="$HOME/code/sys/snippets/$sninf_src.sh"
+  sninf_file="$HOME/.config/alsnip/$sninf_src.sh"
   if [ -f "$sninf_file" ]
   then printf "%s\n" "$sninf_file"
-  else printf "Source claims to be '%s' but that file doesn't exist" "$sninf_src"
+  else printf "Source claims to be '%s' but that file doesn't exist" "$sninf_file"
   fi
 
   printf "\n"

@@ -49,14 +49,17 @@ use_lemonbar() {
 main() {
   case "$1" in
     generate)
+      (cd ~/.config/alsnip && ./printmore > auto.sh)
       if alm-snippet there-are-duplicates
       then alm-snippet print-duplicates "nope, there are duplicates: " >&2
       else
         cp -v ~/.config/sxhkd/sxhkdrc ~/.config/sxhkd/sxhkdrc.bk || exit 1
         ~/.local/share/alsnip/sxhkd/alc-snippet-to-sxhkd > ~/.config/sxhkd/sxhkdrc || exit 1
 
-        cp -v ~/.config/zsh/alsnip-aliases.sh ~/.config/zsh/alsnip-aliases.sh.bk
-        alm-snippet aliases-as-posix > ~/.config/zsh/alsnip-aliases.sh || exit 1
+        if [ -f ~/.config/sh/alsnip-aliases.sh ]
+        then cp -v ~/.config/sh/alsnip-aliases.sh ~/.config/sh/alsnip-aliases.sh.bk
+        fi
+        alm-snippet aliases-as-posix > ~/.config/sh/alsnip-aliases.sh || exit 1
 
         printf "%s\n" "Make sure ~/.config/zsh/alsnip-aliases.sh is hooked up."
         printf "%s\n" "NOTE: sxhkd isn't restarted through user-io "
