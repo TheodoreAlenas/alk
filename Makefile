@@ -2,7 +2,7 @@
 TESTS = test-snippet test-snippet-config sxhkd/test-snippet-to-sxhkd
 
 MOUNT = ${HOME}/.local/share/alsnip
-FINAL_EXECS = $(addprefix ${MOUNT}/,alc-snippet alm-snippet)
+FINAL_EXECS = $(addprefix ${MOUNT}/,alc-snippet alm-snippet alm-snippet-agent-std)
 
 CONFIG_DIR = ${HOME}/.config/alsnip
 
@@ -29,6 +29,9 @@ ${CONFIG_DIR}/auto.sh: ${CONFIG_DIR}
 
 ${MOUNT}/alc-snippet: alc-snippet target/res-test-snippet
 	cp alc-snippet $@
+
+${MOUNT}/alm-snippet-agent-std: agents/alm-snippet target/res-test-snippet
+	cp agents/alm-snippet $@
 
 ${MOUNT}/alm-snippet: alm-snippet target/res-test-snippet
 	cp alm-snippet $@

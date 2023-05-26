@@ -2,6 +2,7 @@
 
 program=./alm-snippet
 export ALSNIP_USER_IO=example-config/user-io
+export alm_snippet_agent_std_substitute=agents/alm-snippet
 
 die() {
   if [ "$INTERACTIVE" = no ]

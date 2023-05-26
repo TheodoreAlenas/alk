@@ -12,13 +12,13 @@ EOM
 }
 
 ask_all() {
-  for d in agents/*
+  for d in "${alm_snippet_agent_std_substitute:-"$HOME/.local/share/alsnip/alm-snippet-agent-std"}"
   do "$d" "$@"
   done
 }
 
 on_first() {
-  for d in agents/*
+  for d in "${alm_snippet_agent_std_substitute:-"$HOME/.local/share/alsnip/alm-snippet-agent-std"}"
   do "$d" "$@" && return
   done
   return 1
