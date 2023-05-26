@@ -1,432 +1,52 @@
 #!/bin/env sh
 
 alm_snip_conf_dir="${AL_SNIPPETS:-"$HOME/.config/alsnip"}"
-
 help() {
   cat <<EOM
 Looks for config files in \$AL_SNIPPETS OR ~/.config/alsnip
 (now it's $alm_snip_conf_dir)
-
-$(alc-generate-help "$0" 1)
-
-TAG:
-$(printf "%s" "$fn" | tr : '\n' | cut -d+ -f2- | tr + '\n' | sed '/^is-/d' | sort | uniq | column)
+and not only. It calls agents from the 2 agents directories,
+which you should go find yourself and go fuck yourself
+as well, I'm too tired to code properly.
 EOM
 }
 
-fn=''
-
-fn_SOURCE() {  # There's an interesting reason behind this function.
-  :            # Can you tell what? It has to do with the fn variable.
-}
-
-source_all() {
-  for funcs_file in "${alm_snip_conf_dir}"/*.sh
-  do
-    . "$funcs_file"
-    srcl_basename="${funcs_file##*/}"
-    fn="SOURCE+is-${srcl_basename%.sh}:$fn"
+ask_all() {
+  for d in agents/*
+  do "$d" "$@"
   done
 }
 
-list_all() {
-  printf %s "$fn" | tr : '\n' | grep -vF SOURCE | grep "${1:-.}" | cut -d+ -f1 
-}
-
-assert_fn_exists() {
-  asfnex_type="$(type "$1")"
-  if [ "${asfnex_type#*function}" ]
-  then
-    echo "invalid function '$1', try '--list'" >&2
-    exit 1
-  fi
-}
-
-escape_quotes() {
-  printf %s "$1" | sed "s/'/'\"'\"'/g"
-}
-
-print_wrapped() {
-
-  cmd="$1"
-  key="$2"
-  act=script
-  shift 2
-
-  assert_fn_exists "fn_$cmd"
-
-  cut_start="${fn#*:"$cmd"+}"
-  attributes="+${cut_start%%:*}"
-  cut_before="${attributes#*"+$key-"}"
-  key_type="${cut_before%%+*}"
-  case "$key,$key_type" in
-    (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
-    (key,term) printf "%s sh -c '%s'\n" "$terminal_wrapper" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")" ;;
-    (key,) "fn_$cmd" "$@" ;;
-
-    (copy,stdout) printf "{ %s; } | %s\n" "$("fn_$cmd" "$@")" "xclip -in -selection clipboard" ;;
-    (copy,)
-      printf "%s '%s'" "printf %s" "$("fn_$cmd" "$@" | sed "s/'/'\"'\"'/g")"
-      printf " | %s\n" "xclip -in -selection clipboard"
-      ;;
-  esac
-
-}
-
-colored_wrapped() {
-
-  cmd="$1"
-  key="$2"
-  shift 2
-
-  painter="$(act=color "fn_$cmd")"
-  act=script
-  if [ "$painter" ]
-  then painted="$("fn_$cmd" "$@" | awk 'NR > 1 {print "newline"} {print $0}' | sh -c "$painter")"
-  else painted="$("fn_$cmd" "$@" | awk 'NR > 1 {print "newline"} {print $0}')"
-  fi
-
-  assert_fn_exists "fn_$cmd"
-
-  case "$key,$(printf %s "$fn" | sed "s/.*\b$cmd\b[^:]*+$key-\([a-zA-Z0-9-]*\).*/\1/")" in
-    (key,stdout) sh -c "$("fn_$cmd" "$@")" ;;
-    (key,term) printf "\npale\n%s sh -c '\nnormal\n%s\npale\n'\n" "$terminal_wrapper" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")" ;;
-    (key,"$fn") printf "%s\n" "$painted" ;;
-
-    (copy,stdout) printf "\npale\n{ \nnormal\n%s\npale\n; } | %s\n" "$painted" "xclip -in -selection clipboard" ;;
-    (copy,"$fn")
-      printf "\npale\n%s '\nnormal\n%s\npale\n'" "printf %s" "$(printf %s "$painted" | sed "s/'/'\"'\"'/g")"
-      printf " | %s\n" "xclip -in -selection clipboard"
-      ;;
-  esac
-
-}
-
-gather_data() {
-
-  cmd="$1" act="$2"
-  shift 2
-  case "$act" in
-    script | descr | arg* ) ;;
-    *) echo "Invalid action: $act" >&2 ;;
-  esac
-
-  assert_fn_exists "fn_$cmd"
-  "fn_$cmd" "$@"
-}
-
-print_id_keys_and_source() {
-
-  # shellcheck disable=SC2016
-  awk 'BEGIN { RS = ":"; FS = "+"; } 
-  func extract_key()
-  {
-    k = $0;
-    gsub(/-control-/, "-^-", k);
-    gsub(/-alt-/, "-!-", k);
-    gsub(/-shift-/, "-#-", k);
-    sub(/[^+]*/, "", k);
-    sub(/^.*\+key\+is-/, ".", k);
-    sub(/\+.*/, "", k);
-    sub(/#/, "+", k);
-    gsub(/-/, "", k);
-    print k;
-  }
-  '"/\+$1\>/"' { print $1; extract_key(); print s; print "===pksaa" }
-  /^SOURCE\+is-/ { s = $0; sub(/^.*\+is-/, "/", s); }'
-}
-
-append_key_script() {
-  while
-    read -r asbe_fn
-    read -r asbe_key
-    read -r asbe_source
-    read -r _
-  do
-    printf "%-5s %-3s %-7s | \n" "$asbe_fn" "$asbe_key" "$asbe_source"
-    act=script "fn_$asbe_fn" ARG1 ARG2 ARG3 ARG4 ARG5
-    printf "%s\n" "===asbe"
+on_first() {
+  for d in agents/*
+  do "$d" "$@" && return
   done
+  return 1
 }
 
-format_key_preview() {
-  awk '
-  /===asbe/ { s = NR }
-  NR == s + 1 { p = $0 }
-  NR >= s + 2 { printf("%s%s\n", p, $0) }
-  '
-}
-
-print_id_preview_and_source() {
-  awk 'BEGIN { RS = ":"; FS = "+"; } 
-  func extract_preview()
-  {
-    if (match($0, "+preview-stdout"))
-      print "preview-stdout"
-    else
-      print ""
-  }
-  '"/\+$1\>/"' { print $1; extract_preview(); print s; print "===pksaa" }
-  /^SOURCE\+is-/ { s = $0; sub(/^.*\+is-/, "/", s); }'
-}
-
-append_copyable_script() {
-  while
-    read -r apsc_func
-    read -r apsc_preview_stdout
-    read -r apsc_source
-    read -r _
-  do
-    printf "%-5s %-7s |\n" "$apsc_func" "$apsc_source"
-    printf "\n"
-    if [ "$apsc_preview_stdout" ]
-    then
-      printf '> '
-      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
-      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5 | sh
-    else
-      act=script "fn_$apsc_func" ARG1 ARG2 ARG3 ARG4 ARG5
-    fi
-    printf "___asbe\n"
-    printf "===asbe\n"
-  done
-}
-
-format_copyables_preview() {
-  awk '
-  /___asbe/ { printf("%s%s\n", p,
-  "______________________________________________");
-  s = NR - 1; }
-  /===asbe/ { s = NR }
-  NR == s + 1 { p = $0 }
-  NR >= s + 2 { printf("%s   %s\n", p, $0) }
-  '
-}
-
-preview() {
+main() {
   case "$1" in
-    (key) printf %s "$fn" | print_id_keys_and_source "$1" | append_key_script | format_key_preview ;;
-    (copy) printf %s "$fn" | print_id_preview_and_source "$1" | append_copyable_script | format_copyables_preview ;;
-    (*) printf %s "$fn" | print_id_preview_and_source "$1" | append_copyable_script | format_copyables_preview ;;
-  esac
-}
-unpreview() {
-  cut -d' ' -f1
-}
+    --help | -h) help ;;  # Print this help
+    list) ask_all "$@" ;;  # [TAG] Get a list of script IDs
+    preview) ask_all "$@" ;;  # [TAG] Preview all snippets with the tag
+    unpreview) cut -d' ' -f1 ;;  # stdin preview, stdout original
 
-snippet_info() {
-  sninf_fn="$(printf "%s" "$1" | cut -d' ' -f1)"
-
-  # shellcheck disable=SC2088
-  sninf_src="$(printf "%s" "$fn" | sed 's/:'"$sninf_fn"'[+:].*// ; s/.*SOURCE+is-// ; s/:.*//')"
-  sninf_file="$HOME/.config/alsnip/$sninf_src.sh"
-  if [ -f "$sninf_file" ]
-  then printf "%s\n" "$sninf_file"
-  else printf "Source claims to be '%s' but that file doesn't exist" "$sninf_file"
-  fi
-
-  printf "\n"
-  act=descr "fn_$sninf_fn"
-
-  printf "\n"
-  act=script "fn_$sninf_fn" ARG1 ARG2 ARG3 ARG4 ARG5
-
-  printf "\n Tags:\n"
-  printf "%s" "$fn" | tr : '\n' | grep "^$sninf_fn+\|^$sninf_fn\$" | tr + '\n' | tail -n +2 | tr - ' ' | column
-
-  printf "\n Arguments:\n"
-  for i in 1 2 3 4 5 6 7 8
-  do
-    arg_info="$(act=arg"$i" "fn_$(printf "%s" "$sninf_fn")")"
-    if [ "$arg_info" ]
-    then printf "\n %s)\n%s\n\n" "$i" "$arg_info"
-    else break
-    fi
-  done
-  
-  printf "\n\n You may want to try:\n\n"
-  cat <<EOM
-alc-snippet gui-run $sninf_fn
-alm-snippet print $sninf_fn script
-alm-snippet print $sninf_fn descr
-alm-snippet print $sninf_fn arg1
-
-> alm-snippet --help
-> alc-snippet --help
-EOM
-}
-
-chop_aliases() {
-  printf "%s" "$fn" | awk '
-  BEGIN { RS = ":"; FS = "+"; }
-
-  func get_is_alias()
-  {
-    for (i = 1; i <= NF; i++) {
-      if ($i == "alias") {
-        return i + 1;
-      }
-    }
-    return 0;
-  }
-
-  func find_alias(def_position)
-  {
-    split($def_position, alias_parts, "-");
-
-    if (alias_parts[1] == "is") {
-      return substr($def_position, 4, length($def_position) - 3);
-    }
-    return $1;
-  }
-
-  func print_alias(alias)
-  {
-    alias_id = $1;
-
-    # auto-check-chop-aliases-1
-    # sed "s/^.*print //"
-    print alias
-    print alias_id
-    # auto-check-end
-  }
-
-  {
-    is_alias = def_position = get_is_alias();
-
-    if (is_alias)
-      print_alias(find_alias(def_position));
-  }'
-}
-
-posix_from_alias_chops() {
-  printf "# POSIX aliases autogenerated by %s\n\n" "${0##*/}, $(date)"
-  while
-    # auto-check-chop-aliases-2
-    # sed "s/.*rnwsc_//"
-    read -r rnwsc_alias
-    read -r rnwsc_alias_id
-    # auto-check-end
-  do
-    act=descr "fn_$rnwsc_alias_id" | sed 's/^/# /'
-    printf "alias %s='" "$rnwsc_alias"
-    printf %s "$(act=script "fn_$rnwsc_alias_id")" | sed "s/'/'\"'\"'/g"
-    printf "'\n\n"
-  done
-}
-
-chop_key_bindings() {
-  fn_name='\([^+]*\)'
-  binding='\([^+]*\)'
-  match="$fn_name.*+key+is-$binding.*"
-  subst='\1 \2 \0'
-  sed_cmd="s/$match/$subst/p"
-  printf "%s" "$fn" | tr : '\n' | sed -n "$sed_cmd" | awk '
-  {
-    snippet_id = $1;
-    keys = $2;
-
-    if (match($3, "+silent"))
-      silent = "silent";
-    else
-      silent = "nonsilent";
-
-    if (match($3, "+interactive"))
-      interactive = "interactive";
-    else if (match($3, "+dont-bake"))
-      interactive = "dontbake";
-    else
-      interactive = "noninteract";
-
-    # auto-check-chop-key-bindings-1
-    # sed "s/^.*print //"
-    print keys
-    print silent
-    print interactive
-    print you_or_me
-    print snippet_id
-    # auto-check-end
-  }' | tr - ' '
-}
-
-append_scripts_to_key_chops() {
-  while
-    # auto-check-chop-key-bindings-2
-    # sed "s/.*rnwsc_//"
-    read -r rnwsc_keys
-    read -r rnwsc_silent
-    read -r rnwsc_interactive
-    read -r _rnwsc_you_or_me
-    read -r rnwsc_snippet_id
-    # auto-check-end
-  do
-    printf "%s\n%s\n%s\n" "$rnwsc_keys" "$rnwsc_silent" "$rnwsc_interactive"
-
-    rnwsc_takes_args="$(act=arg1 "fn_$rnwsc_snippet_id")"
-
-    if [ "$rnwsc_takes_args" ] || [ "$rnwsc_interactive" = "dontbake" ]
-    then printf "call-me\n%s\n" "$rnwsc_snippet_id"
-    else
-      printf "run-yourself\n%s\n" "$rnwsc_snippet_id"
-      print_wrapped "$rnwsc_snippet_id" key
-      printf "rnwsc-end-of-script\n"
-    fi
-
-  done
-}
-
-print_duplicates() {
-  printf %s "$1"
-  printf "%s" "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE | sort | uniq -D
-}
-lacking_newline() {
-  for f in $(printf %s "$fn" | tr : '\n' | cut -d+ -f1 | grep -vF SOURCE)
-  do
-    if [ "$(act=script "fn_$f" | tr -d -c '\n' | tr '\n' a)" = '' ]
-    then printf "%s\n" "$f"
-    fi
-  done
-}
-
-run() {
-  case "$1" in
-    --help | -h) help ;;                     #            Print this help
-    list) list_all "$2" ;;   # [TAG]      Get a list of script IDs
-    preview | p) preview "$2" ;;          # [TAG]      Preview all snippets with the tag
-    unpreview) unpreview ;;           #            stdin preview, stdout original
-
-    info | i) snippet_info "$2" ;;        # SCRIPT_NAME
+    info) on_first "$@" ;;        # SCRIPT_NAME
     self-or-stdout) self_or_stdout "$2" "$3" ;;  # TAG SCRIPT_NAME  consider as-is or pipe to sh
 
-    print | e) # SCRIPT_NAME script | descr | arg1 | arg2 | arg3
-      shift
-      gather_data "$@"
-      ;;
-    print-wrapped) # SCRIPT_NAME TAG
-      shift
-      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
-      print_wrapped "$@"
-      ;;
-    colored-wrapped) # SCRIPT_NAME TAG
-      shift
-      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
-      colored_wrapped "$@"
-      ;;
-    chop-key-bindings)  # for hooking hotkey systems (try it)
-      terminal_wrapper="$("${ALSNIP_USER_IO:-"$HOME/.config/alsnip/user-io"}" print-terminal-wrapper)"
-      chop_key_bindings | append_scripts_to_key_chops
-      ;;
-    aliases-as-posix) chop_aliases | posix_from_alias_chops ;;
+    print) on_first "$@" ;;
+    print-wrapped) on_first "$@" ;;  # SCRIPT_NAME TAG
+    colored-wrapped) on_first "$@" ;;  # SCRIPT_NAME TAG
+    chop-key-bindings) ask_all "$@" ;;  # for hooking hotkey systems (try it)
+    aliases-as-posix) ask_all "$@" ;;
 
-    print-duplicates) print_duplicates "$2" ;;  # outputs the duplicates to stdout
-    there-are-duplicates) [ "$(print_duplicates)" ] || exit 1 ;;  # exits with 1 if there are duplicates
-    lacking-newline) lacking_newline ;;  # prints scripts that lack newlines
-    there-are-newline-lackers) [ "$(lacking_newline)" ] || exit 1 ;;  # silent, exits with 1
+    print-duplicates) ask_all "$@" ;;  # outputs the duplicates to stdout
+    there-are-duplicates) [ "$(ask_all print-duplicates)" ] || exit 1 ;;  # exits with 1 if there are duplicates
+    lacking-newline) ask_all "$@" ;;  # prints scripts that lack newlines
+    there-are-newline-lackers) [ "$(ask_all lacking-newline)" ] || exit 1 ;;  # silent, exits with 1
 
-    expose-fn) printf "%s\n" "$fn" ;;      # for debugging. Unstable, don't code with it.
     *) echo 'Sorry invalid flag, try --help' >&2 ; exit 1 ;;
   esac
 }
 
-source_all
-run "$@"
+main "$@"
