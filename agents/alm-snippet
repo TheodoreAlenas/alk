@@ -35,7 +35,7 @@ list_all() {
 
 assert_fn_exists() {
   asfnex_type="$(type "$1")"
-  if [ "${asfnex_type#*function}" ]
+  if [ "${asfnex_type#*function}" = "$asfnex_type" ]
   then
     echo "invalid function '$1', try '--list'" >&2
     exit 1
