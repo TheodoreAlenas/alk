@@ -6,12 +6,13 @@ FINAL_EXECS = $(addprefix ${MOUNT}/,alc-snippet alm-snippet alm-snippet-agent-st
 
 CONFIG_DIR = ${HOME}/.config/alsnip
 
-all: target ${MOUNT} ${FINAL_EXECS} ${CONFIG_DIR}/auto.sh
+all: target ${MOUNT} ${FINAL_EXECS}
+	@test -L ~/.local/bin/alm-snippet || ln -sv ${MOUNT}/alm-snippet ~/.local/bin/alm-snippet
+	@test -L ~/.local/bin/alc-snippet || ln -sv ${MOUNT}/alc-snippet ~/.local/bin/alc-snippet
 
 clean:
 	rm -f ${FINAL_EXECS}
 	rm target/*
-	rm -f ${CONFIG_DIR}/auto.sh
 
 ${MOUNT}:
 	mkdir -p $@
@@ -22,9 +23,6 @@ target:
 
 ${CONFIG_DIR}:
 	cp -r example-config $@
-
-${CONFIG_DIR}/auto.sh: ${CONFIG_DIR}
-	${CONFIG_DIR}/printmore > $@
 
 
 ${MOUNT}/alc-snippet: alc-snippet target/res-test-snippet

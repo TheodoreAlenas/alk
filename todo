@@ -16,18 +16,28 @@ Get a piece of functionality from the user.
 Get a piece of copyable snippet from the user.
 Run a piece of functionality.
 Copy a snippet.
+Show help for a piece.
 
 Present, `show off' pieces that fit certain criteria.
 Show help, given an ID and maybe the agent.
 Run some code. Takes:
-  should_store, show{temporary, permanent, dont},
-  paint_script (optional), script
+  should_store
+  show{temporary, permanent, dont},
+  paint_script (optional)
+  script
 Copy a piece of text.
 
-List the ID and agent of pieces that fit certain criteria.
-Get the description of a piece.
-Retrieve what's to be ran, given an ID and maybe the agent.
-Retrieve what's to be copied, given an ID and maybe the agent.
+Get what's to be ran, given an ID and maybe the agent.
+Get what's to be copied, given an ID and maybe the agent.
+
+Query pieces.
+Get the
+  ID,
+  agent,
+  snippet,
+  short and long description,
+  tags,
+  colors.
 Get the text of a description, perhaps with an option to color it.
 
 m1 | volume   | pacmd set-sink-volume 0 21000
