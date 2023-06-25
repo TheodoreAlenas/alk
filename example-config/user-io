@@ -62,8 +62,8 @@ main() {
         alm-snippet aliases-as-posix > ~/.config/sh/alsnip-aliases.sh || exit 1
 
         printf "%s\n" "Make sure ~/.config/zsh/alsnip-aliases.sh is hooked up."
-        printf "%s\n" "NOTE: sxhkd isn't restarted through user-io "
-        printf "%s" "with this configuration script."
+        printf "%s\n" "NOTE: sxhkd isn't restarted through user-io"
+        printf "%s\n" "with this configuration script."
         printf "%s\n" "Otherwise, that was it."
       fi
       ;;
@@ -72,8 +72,8 @@ main() {
     print-terminal-wrapper) printf 'alacritty -e\n' ;;
     execute)  # you can be more creative here. I also store the
       mkdir -p /tmp/al  # scripts in a history file.
-      stdout="$(mktemp /tmp/al/stdout-"$(basename "$0")"-XXXX)"
-      stderr="$(mktemp /tmp/al/stderr-"$(basename "$0")"-XXXX)"
+      stdout="$(mktemp /tmp/al/stdout-"${0##*/}"-XXXX)"
+      stderr="$(mktemp /tmp/al/stderr-"${0##*/}"-XXXX)"
       sh -c "$1" 1> "$stdout" 2> "$stderr"
       o="$(cat "$stdout")"; [ "$o" ] && alacritty -e less "$stdout"
       e="$(cat "$stderr")"; [ "$e" ] && alacritty -e less "$stderr"

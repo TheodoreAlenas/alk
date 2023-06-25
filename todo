@@ -57,3 +57,18 @@ separate commands, then we're screwed. Especially if this
 means files. The ID would be messed up, perhaps we shouldn't
 use an ID then.
 
+
+I'd like the bar at the bottom to say something like
+
+eb br|h <-|l ->|o ls|a qt|3 v|0 en|9 gr|9 gr|Q cl|t te|   1.(2.)3  4  5  6. 7  8    alc-terminal --dock -e sh -c 'cd /tmp; broot'
+eb br  h <-  l ->  o ls  a qt  3 v  0 en  9 gr  9 gr  Q cl  t te    | .(.)      .   |    alc-terminal --dock -e sh -c 'cd /tmp; broot'
+eb h l o a 3 0 9 9 Q t                      | .(.)      .   |    alc-terminal --dock -e sh -c 'cd /tmp; broot'
+alc-terminal --dock -e sh -c 'cd /tmp; broot'                 | .(.)      .   |                     eb h l o a 3 0 9 9 Q t
+alc-terminal --dock -e sh -c 'cd /tmp; broot'                 | .(.)      .   |        ... h l o a 3 0 9 9 Q t ... 2 5 t eb
+
+0   .<<<.       40000     pacmd set-sink-volume 0 18000       | 1 2      (6)  |        ... h l o a 3 0 9 9 Q t ... 2 5 eb m4
+
+(...) nvim "+e ~/.cache/al/history.sh" +\$ (...)              | 1 2      (6)  |        ... h l o a 3 0 9 9 Q t ... 2 5 eb o
+alc-terminal --dock -e sh -c 'nvim "+e ~/.cache/al/history... | 1 2      (6)  |        ... h l o a 3 0 9 9 Q t ... 2 5 eb o
+alc-nvim-dock "+e ~/.cache/al/history.sh" +\$                 | 1 2      (6)  |        ... h l o a 3 0 9 9 Q t ... 2 5 eb o
+alc-edit-log ~/.cache/al/history.sh                           | 1 2      (6)  |        ... h l o a 3 0 9 9 Q t ... 2 5 eb o

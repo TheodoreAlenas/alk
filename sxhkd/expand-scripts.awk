@@ -20,6 +20,7 @@ NR == s + 4 {
   }
   else if (r_silent != "silent") {
 
+    printf("printf '%%s\\n' '%s' >> /tmp/al/key-history && ", r_keys);  # paint
     printf("alm-snippet colored-wrapped %s key ", r_snippet_id);  # paint
     printf("| ~/.config/alsnip/user-io say-bar \"sxhkd (%s)\" & ", r_keys);
     printf("~/.config/alsnip/user-io execute ");
