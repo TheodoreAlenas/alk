@@ -3,9 +3,10 @@
 I'm adding this note at the top of the Readme
 like six months or a year after I abandoned the project.
 I did originally plan on uploading it on GitHub,
-but it's bad. It's the second snippet system I made,
+but it's bad. It's the third snippet system I made,
 now I'm on the 4th, and you can check it out in my dotfiles.
-It's a single file, called c/c/scmd.sh as of now.
+It's a single file,
+[https://github.com/TheodoreAlenas/dotfiles/blob/main/c/scmd.sh].
 I'm uploading this project to enrich my portfolio.
 
 # ALEENA'S SNIPPET ENGINE
