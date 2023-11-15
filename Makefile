@@ -42,7 +42,7 @@ target/res-test-snippet-config: ${CONFIG_DIR} alm-snippet test-snippet-config
 	./test-snippet-config && touch $@
 
 
-${HOME}/.config/sxhkd/sxhkdrc: sxhkd/alc-snippet-to-sxhkd target/res-test-snippet-to-sxhkd
+${HOME}/.config/sxhkd/sxhkdrc: sxhkd/alc-snippet-to-sxhkd sxhkd/expand-keys.awk sxhkd/expand-scripts.awk target/res-test-snippet-to-sxhkd
 	cp $@ $@.bk
 	sxhkd/alc-snippet-to-sxhkd > $@
 
