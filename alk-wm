@@ -1,0 +1,72 @@
+#!/bin/sh
+
+prefix="$1"
+shift
+
+case "$prefix" in
+
+  close | Q) bspc node --close ;;
+
+  parent | p) bspc node @parent --focus ;;
+  brother | o) bspc node @brother --focus ;;
+  first | 1) bspc node @first --focus ;;
+  second | 2) bspc node @second --focus ;;
+  last | w) bspc node last --focus ;;
+
+  screenshot-region | s)  # region to put in /tmp
+    if [ "$1" = "" ]
+    then eval "shotgun $(slop -f "-i %i -g %g") /tmp/screenshot.png"
+    else eval "shotgun $1 /tmp/screenshot.png"
+    fi
+    ;;
+
+  timed-screenshot | S)
+    print_opts() {
+      printf "%s\n" 0.3s 1s 3s 5s 9s
+    }
+    sleep="${1:-"$(print_opts | alc-talk recommend 'screenshot in')"}"
+    sleep "$sleep" 2> /dev/null || exit
+    shotgun /tmp/screenshot.png
+    printf "screenshot taken\n"
+    ;;
+
+  stay | t)  # bspc rule to not follow next window
+    wm_stay "$@"
+    ;;
+
+  rules | r)
+    bspc rule -l
+    ;;
+
+  properties | x) xprop ;;  # xprop
+  turn-floating | f) bspc node --state floating ;;
+  turn-tiled | F) bspc node --state tiled ;;
+  make-transparent | i) picom-trans 95 ;;  # picom-trans 95
+
+  list | l)  # list the windows per desktop
+
+    list_desktop() {
+      printf "%s   " "$1"
+      for _window in $(bspc query -N -d "$2")
+      do printf 'o '
+      done
+      printf '\n'
+    }
+
+    list_all_desktops() {
+      local i=1
+      for desktop in $(bspc query -D --names)
+      do list_desktop "$i" "$desktop"
+        i="$((i+1))"
+      done
+    }
+
+    list_all_desktops
+    ;;
+
+  *)
+    echo "invalid command: $prefix" >&2
+    exit 1
+    ;;
+
+esac

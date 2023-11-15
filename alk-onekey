@@ -1,0 +1,84 @@
+#!/bin/sh
+
+prefix="$1"
+shift
+
+dmenu_on_hour() {
+  hour_number="$(date +%H | sed 's/^0//')"
+  dmenu -l 28 -p "$1" -d "$((hour_number - 1))"
+}
+
+help_output() {
+  cat ~/.cache/al/commands
+}
+
+exec_one() {
+  alc-talk recommend exec | sed 's/\w*//' | sh
+}
+here_or_exec_one() {
+  if [ "$INTERACTIVE" = yes ]
+  then cat
+  else exec_one
+  fi
+}
+
+case "$prefix" in
+
+  --help | H) help_output | here_or_exec_one ;;
+  pick-one-liner | o) help_output | exec_one ;;
+  list-all | A) help_output ;;
+
+  battery | b) alc-battery "$@" ;;
+  battery-long | B) alc-battery -t 2 -s 0.3 ;;
+
+  clock | s) alc-clock "$@" ;;
+  clock-long | S) alc-clock -t 5 ;;
+
+  keyboard-greek | 9) setxkbmap gr ;;
+  keyboard-dvorak | 0) setxkbmap us -variant dvorak ;;
+
+  window-h | h) bspc node west  --focus ;;
+  window-j | j) bspc node south --focus ;;
+  window-k | k) bspc node north --focus ;;
+  window-l | l) bspc node east  --focus ;;
+
+  windows-clockwise | r) bspc node @parent --rotate 90 ;;
+  windows-anticlockwise | R) bspc node @parent --rotate 270 ;;
+
+  close-other-window | Q)
+    bspc node @brother --close || bspc node --close
+    ;;
+
+  window-add-little | i) bspc node @parent --ratio +0.05 ;;
+  window-sub-little | d) bspc node @parent --ratio -0.05 ;;
+  window-add-plenty | I) bspc node @parent --ratio +0.2 ;;
+  window-sub-plenty | D) bspc node @parent --ratio -0.2 ;;
+
+
+  yank-window | y)
+    id="$(bspc query -N -n .focused)"
+    alc-memory temporary set yanked-window "$id"
+    ;;
+
+  puke-window | p)
+    id="$(alc-memory temporary get yanked-window)"
+    bspc node "$id" --to-node focused || \
+      bspc node "$id" --to-desktop focused
+    ;;
+
+  evaluate | f)  # execute anything
+    last="$(alc-memory permanent get last-command)"
+    to_evaluate="$(alc-talk -d "$last" get-line '$')"
+    test '' = "$to_evaluate" && exit 0
+    output="$(eval "$to_evaluate")"
+    alc-memory permanent set last-command "$to_evaluate"
+    test "$output" = "" && exit 0
+    printf "%s\n" "$output"
+    ;;
+
+  web-browser | a) qutebrowser 2> /dev/null ;;
+  terminal | t) alc-terminal ;;
+
+  *) echo "invalid command" >&2; exit 1 ;;
+
+esac

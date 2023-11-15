@@ -1,0 +1,26 @@
+#!/bin/sh
+die() {
+  printf "%s\n" "$1" >&2
+  exit 1
+}
+test $# = 0 && die "try --help"
+
+prefix="$1"
+shift
+
+case "$prefix" in
+
+  wm      | w) alk-wm      "$@" ;;
+  music   | m) alk-music   "$@" ;;
+  go      | g) alk-go      "$@" ;;
+  execute | e) alk-execute "$@" ;;
+  new     | n) alk-new     "$@" ;;
+  view    | v) alk-view    "$@" ;;
+  type    | z) alk-type    "$@" ;;
+  ext     | x) alk-ext     "$@" ;;
+
+  *) alk-onekey "$prefix" "$@" ;;
+
+esac
+
+

@@ -1,0 +1,70 @@
+#!/bin/sh
+
+prefix="$1"
+shift
+
+case "$prefix" in
+
+  update | u)  # update al itself
+    (cd ~/code/sys && make -s) || exit 1
+    alc-reset-bspwm-rules
+    alc-update-hotkeys
+    ;;
+  test-al | T) sleep 0.3 ; alc-test ;;
+
+  pick-calc | c)  # dmenu - octave - dmenu - xclip
+
+    : \
+      | dmenu \
+      | octave \
+      | cut -d' ' -f3 \
+      | dmenu \
+      | tr -d '\n' \
+      | xclip -select clipboard -i
+    ;;
+
+  terminal-below | t)
+    bspc rule --add '*:*:*' --one-shot split_dir=south
+    alc-terminal
+    ;;
+
+  terminal-theme | h)  # pick a theme for the terminal
+    bspc rule --add '*:*:*' --one-shot state=floating rectangle=1920x400+0+0
+    alc-terminal -e alc-terminal --preview-themes "$(bspc query -N -n)"
+    ;;
+
+  reset-terminal-theme | H)  # make the terminal follow the system theme
+    alc-terminal --unset-theme "$(bspc query -N -n)"
+    ;;
+
+  terminal-kitty | k) kitty ;;
+  terminal-xterm | x) xterm ;;
+  open-zathura | z) zathura ;;
+  open-emacs | m) emacs ;;
+
+  restart-network-manager | r)
+    sleep 0.3
+    bspc rule --add '*:*:*' --one-shot state=floating desktop=^
+    alc-terminal -k 'sudo systemctl restart NetworkManager'
+    ;;
+  poweroff | q)
+    sleep 0.3
+    bspc rule --add '*:*:*' --one-shot state=floating desktop=^
+    alc-terminal -k 'sudo poweroff'
+    ;;
+  webcam | w)  # mpv /dev/video0
+    bspc rule --add '*:*:*' --one-shot sticky=on state=floating
+    mpv av://v4l2:/dev/video0 --profile=low-latency --untimed 1> /dev/null 2> /dev/null
+    ;;
+  screenkey | s) screenkey ;;  # display key presses
+  kill-screenkey | S) killall screenkey ;;
+
+  ping-google | p) timeout 0.5s ping github.com; echo '(end)' ;;
+
+  *)
+    echo "invalid command: $prefix" >&2
+    exit 1
+    ;;
+
+esac
+

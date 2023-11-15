@@ -1,0 +1,77 @@
+#!/bin/sh
+
+use_sxiv() {
+  bspc rule --add '*:sxiv:*' --one-shot state=floating desktop=^
+  sxiv -t -n 8 -o "$1"
+}
+this_or_sxiv() {
+  if [ -z "$1" ]
+  then use_sxiv "$2"
+  else printf "%s\n" "$1"
+  fi
+}
+
+prefix="$1"
+shift
+
+case "$prefix" in
+
+  external-binding | x)
+    alc-terminal --float -e nvim ~/.local/bin/alk-ext
+    ;;
+
+  timer | t)  # sleep arg before the clock shows up
+    time="${1:-"$(alc-talk get-line "sleep")"}"
+    test "$time" || exit
+    sleep "$time"
+    alc-clock -t 0.2 && sleep 0.2 && alc-clock -t 2
+    ;;
+
+  hourly | h)  # nvim ~/notes/hourly +$hour
+    one_hour_back="$(( ($(date +%H) + 23) % 24 ))"
+    hour_line="$((one_hour_back + 1))"
+    alc-terminal --float -e nvim ~/notes/hourly +"$hour_line"
+    ;;
+
+  wallpaper | w)
+    img="$(this_or_sxiv "$1" ~/img/wallp)"
+    feh --bg-scale "$img" 2> /dev/null
+    ;;
+
+  wallpaper-evil | e)  # choose between all the images
+    img="${1:-"$(alc-find file ~/img)"}"
+    test "$img" || exit
+
+    print_opts () {
+      printf "scale\nfill\nmax\ntile\n" 
+    }
+
+    style="${2:-"$(print_opts | alc-talk recommend "feh --bg-")"}"
+    if ! [ "$style" = "max" ]
+    then feh --bg-"$style" "$img"; exit
+    fi
+    test "$style" || exit
+
+    print_opts () {
+      printf "000000\n885544\n333339\n" 
+    }
+
+    color="${3:-"$(print_opts | alc-talk recommend "feh --bg-$style -B #")"}"
+    test "$color" || exit
+
+    feh --bg-"$style" -B "#$color" "$img"
+    ;;
+
+  default-wallpaper | d)
+    img="$(this_or_sxiv "$1" ~/img/wallp)"
+    ln -sf "$img" ~/img/wallp/00-welcome.jpg
+    feh --bg-scale "$img"
+    ;;
+
+
+  *)
+    echo "invalid command: $prefix" >&2
+    exit 1
+    ;;
+
+esac

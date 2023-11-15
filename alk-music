@@ -1,0 +1,80 @@
+#!/bin/sh
+
+wm_stay() {
+  bspc rule --add '*:*:*' --one-shot follow=off
+}
+die() {
+  printf "%s\n" "$1" >&2
+  exit 1
+}
+
+prefix="$1"
+shift
+
+send_mpv() {
+  com="$1"
+  test "$com" = "" && die "the command argument is necessary"
+
+  if [ -S /tmp/music.sock ]
+  then printf "%s\n" '{"command": ['"$com"']}\n' | socat - /tmp/music.sock > /dev/null
+  else die "the socket isn't there"
+  fi
+}
+
+set_mpv_volume() {
+  vol="${1:-"$(seq 10 10 100 | alc-talk recommend "volume")"}"
+  test "$vol" || exit
+  send_mpv '"set_property", "volume", '"$vol"'.0'
+}
+
+mpv_on_sock() {
+  mpv "$@" --input-ipc-server=/tmp/music.sock > /dev/null 2> /dev/null &
+}
+
+case "$prefix" in
+
+  spawn | s)  # spotify-launcher  (silenced)
+    spotify-launcher > /dev/null 2> /dev/null
+    ;;
+
+  hell | h)  # hellsinger album
+    wm_stay
+    mpv_on_sock ~/music/hellsinger-fast.mp4
+    ;;
+
+  heck | k)  # and here is my favorite part
+    wm_stay
+    mpv_on_sock ~/music/hellsinger-fast.mp4 --start=36:15 --volume=60
+    ;;
+
+  play | u)  # unpause, if you will
+    send_mpv '"set_property", "pause", false'
+    ;;
+
+  pause | p) send_mpv '"set_property", "pause", true' ;;
+  next | n) send_mpv '"playlist-next"' ;;
+  prev | N) send_mpv '"playlist-prev"' ;;
+
+  volume | v)  # pacmd set-sink-volume 0 "$a"
+    first_part='pacmd set-sink-volume 0 '
+    inp="${1:-"$(seq 0 10000 60000 | alc-talk get-rest "$first_part")"}"
+    test "$inp" = "$first_part" && exit
+    eval "$inp"
+    ;;
+
+  volume-10 | 1) pacmd set-sink-volume 0 0 ;;
+  volume-20 | 2) pacmd set-sink-volume 0 5000 ;;
+  volume-30 | 3) pacmd set-sink-volume 0 20000 ;;
+  volume-40 | 4) pacmd set-sink-volume 0 25000 ;;
+  volume-50 | 5) pacmd set-sink-volume 0 30000 ;;
+  volume-60 | 6) pacmd set-sink-volume 0 35000 ;;
+  volume-70 | 7) pacmd set-sink-volume 0 40000 ;;
+  volume-80 | 8) pacmd set-sink-volume 0 45000 ;;
+  volume-90 | 9) pacmd set-sink-volume 0 50000 ;;
+
+  *)
+    echo "invalid command: $prefix" >&2
+    exit 1
+    ;;
+
+  esac

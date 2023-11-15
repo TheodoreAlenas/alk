@@ -1,0 +1,56 @@
+#!/bin/sh
+
+prefix="$1"
+shift
+
+mpv_shut_up() {
+  mpv "$@" 2> /dev/null 1> /dev/null || echo "mpv errored" >&2
+}
+
+set_brightness() {
+  command="xrandr --output eDP-1 --brightness 0."
+  brightness="${1:-"$(seq 1 9 | alc-talk recommend "$command")"}"
+  test "$brightness" || exit
+  eval "$command$brightness"
+}
+
+case "$prefix" in
+
+  recent | r)
+    mpv_shut_up $(find ~/img/go -type f -printf "%A@ %p\n" | sort -r | awk '{print $2}')
+    ;;
+
+  video | V) mpv_shut_up $(find ~/img/go -name '*.mp4' | shuf) ;;
+  screenshot | s) sxiv /tmp/screenshot.png ;;
+
+  uncle-bob | b) mpv_shut_up ~/img/other/clean-code-1-uncle-bob.mkv ;;  # Robert Martin clean code
+
+  shuffle | o)  # go stands for 'good ones'. Nothing bad oc
+    mpv_shut_up $(find ~/img/go -name '2-*' -prune -o -type f | shuf) ;;
+
+  directory | d)
+    d="${1:-"$(alc-find directory ~/img/go -c red)"}"
+    test "$d" || exit
+    mpv_shut_up "$d"
+    ;;
+
+  image | i)
+    f="${1:-"$(alc-find file ~/img/go -c red)"}"
+    test "$f" || exit
+    mpv_shut_up "$f" --pause
+    ;;
+
+  brightness | v) set_brightness "$@" ;;  # xrandr for screen/monitor
+  brightness-1 | 1) set_brightness 1 ;;
+  brightness-2 | 2) set_brightness 2 ;;
+  brightness-3 | 3) set_brightness 3 ;;
+  brightness-4 | 4) set_brightness 4 ;;
+  brightness-5 | 5) set_brightness 5 ;;
+  brightness-6 | 6) set_brightness 6 ;;
+  brightness-7 | 7) set_brightness 7 ;;
+  brightness-8 | 8) set_brightness 8 ;;
+  brightness-9 | 9) set_brightness 9 ;;
+
+  *) echo "invalid command: $prefix" >&2; exit 1 ;;
+
+esac

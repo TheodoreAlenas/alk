@@ -1,0 +1,20 @@
+#!/bin/sh
+
+export TITLE="The unifying 'al' command namespace"
+export DESCRIPTION="The third or fourth key binding system,
+after the terminal which-key and the sxhkd exclusive config.
+I used to like it, but I wish it was more verbose,
+therefore I eventually made the snippet system.
+I didn't relize that the strongest side of the 'al'
+or 'alk' system was the fact that the files are
+easy to parse into a --help. I also didn't realize
+how little I actually needed dmenu.
+One would say, scmd.sh uses it as much as alk,
+but at least there are no abstractions,
+even if that means I have to check again and again
+for empty input."
+export HAS_CODE='y'
+export HAS_IMAGES=''
+export HAS_VIDEOS=''
+
+"$@" al*

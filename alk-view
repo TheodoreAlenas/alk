@@ -1,0 +1,119 @@
+#!/bin/sh
+help_output() {
+  cat ~/.cache/al/commands
+}
+
+prefix="$1"
+shift
+
+case "$prefix" in
+
+  kill | k)
+    list_ps() {
+      ps -e -o pid,command | sed "s|$HOME|~|" | cut -c -60
+    }
+    line="${1:-"$(list_ps | alc-talk recommend 'kill')"}"
+    test "$line" || exit
+    cmd="kill $(printf "%s\n" "$line" | awk '{print $1}')"
+    alc-talk confirm "$cmd" && eval "$cmd"
+    ;;
+
+  exports | e)
+    export
+    ;;
+
+  permanent-variables | V)
+    alc-memory permanent edit
+    ;;
+
+  temporary-variables | v)
+    alc-memory temporary edit
+    ;;
+
+  downloads | d)
+    which="${1:-"$(alc-find file ~/Downloads)"}"
+    test "$which" || exit
+    how="${1:-"$(printf "zathura\nsxiv\nmpv\n" | alc-talk recommend "$which")"}"
+    test "$how" || exit
+    "$how" "$which"
+    ;;
+
+  shortcuts | s)  # doesn't output to dmenu
+    help_output | awk '{print $1}'
+    ;;
+
+  all | A)  # doesn't output to dmenu
+    help_output | awk '{printf("%s\n", $3)}' | sort | uniq
+    ;;
+
+  pick-slide-a | l)  # pdf slides from ~/.cache/env.sh
+    . ~/.cache/env.sh
+    f="${1:-"$(alc-find file "$AL_SLIDES1")"}"
+    test "$f" || exit
+    zathura "$f"
+    ;;
+
+  pick-slide-b | L)
+    . ~/.cache/env.sh
+    f="${1:-"$(alc-find file "$AL_SLIDES2")"}"
+    test "$f" || exit
+    zathura "$f"
+    ;;
+
+  pick-glyph | j)  # emoji to clipboard
+    retrieve() { cat ~/.local/share/glyphs | dmenu; }
+    isolate() { printf "$1" | cut -d' ' -f1 | tr -d '\n'; }
+    put_in_clipboard() { xclip -in -sel clip; }
+    input_line="$(alc-print "${1:-"$(retrieve)"}")" || exit 0
+    isolate "$input_line" | put_in_clipboard
+    ;;
+
+  figlet | f)  # list figlet 'fonts'
+    chop_extension() {
+      sed 's/\..*//'
+    }
+    show_one() {
+      echo "$1"
+      figlet -f "$1" 'Hello'
+    }
+
+    for f in /usr/share/figlet/fonts/*
+    do show_one "$f"
+    done
+    ;;
+
+  manual | m)
+    print_sh_mans() {
+      man -k . | awk '/\(1\)/{print $1}'
+    }
+    man="${1:-"$(print_sh_mans | alc-talk recommend 'man')"}"
+    test "$man" || exit
+    alc-terminal -e man "$man"
+    ;;
+  awk-manual | w) qutebrowser ~/.local/share/awk-manual.html ;;
+  qutebrowser-manual | q) sxiv ~/notes/qutebrowser.png ;;
+
+  note | n)  # view or edit a note
+    arg="${1:-"$(alc-find file ~/notes)"}"
+    test "$arg" || exit
+    alc-terminal --dir ~/notes -e nvim $arg
+    ;;
+
+  git-repo | g)  # open a terminal on the repo
+    dir="${1:-"$(alc-gits | alc-talk recommend 'repo')"}"
+    test "$dir" || exit
+    alc-memory permanent set "last-repo" "$(alc-gits --base)/$dir"
+    ;;
+
+  set-theme | h)  # alc-set-theme
+    theme="${1:-"$(alc-set-theme --list | alc-talk demand 'alc-set-theme')"}"
+    test "$theme" || exit
+    alc-set-theme "$theme"
+    ;;
+
+  *)
+    echo "invalid command: $prefix" >&2
+    exit 1
+    ;;
+
+  esac
